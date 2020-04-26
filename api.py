@@ -6,13 +6,13 @@ from mysql.connector import Error
 
 ny_api = "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"
 
-def create_connection(host_name, user_name, user_password):
+def create_connection(host_name, user_name, user_password, db_name='mysql'):
     connection = None
     try:
         connection = mysql.connector.connect(
             host=host_name,
             user=user_name,
-            passwd=user_password
+            passwd=user_password,
             database=db_name
         )
         print("Connection to MySQL DB successful")
@@ -22,11 +22,49 @@ def create_connection(host_name, user_name, user_password):
 
 connection = create_connection("localhost", "miles", "shrek5")
 
-def query_database(connection, query):
+def exec_database(connection, cmd):
     cursor = connection.cursor()
     try:
-        cursor.execute(query)
-        print("Database queried successfully")
+        cursor.execute(cmd)
+        print("Database exec'd successfully: ",cmd)
+    except Error as e:
+        print(f"The error '{e}' occurred")
+
+def insert_database(connection, table, valueset, formatt=None):
+    format_str = "("
+    values_str = "VALUES ("
+    if formatt == None:
+        if isinstance(valueset,dict):
+            formatt = valueset.keys()
+        else:
+            raise SyntaxError("invalid insertion data")
+    for f in formatt:
+        format_str += f+", "
+        if isinstance(valueset,list):
+            values_str += "%s, "
+        elif isinstance(valueset,dict):
+            values_str = "%s("+f+"),"
+
+    format_str = format_str[:-1]+")"
+    values_str = values_str[:-1]+")"
+
+    cmd = "INSERT INTO "+table+" "+format_str+" "+values_str
+
+    exec_database(connection, cmd % valueset)
+
+def query_database(connection, cmd):
+    cursor = connection.cursor()
+    try:
+        cursor.execute(cmd)
+        print("Database queried successfully: ", cmd)
+        return cursor
+    except Error as e:
+        print(f"The error '{e}' occurred")
+
+def commit_database(connection):
+    try:
+        connection.commit()
+        print("Database committed successfully")
     except Error as e:
         print(f"The error '{e}' occurred")
 
@@ -55,16 +93,10 @@ class County:
             return self.deaths
 
     def getTotalNumCases(self):
-        num = 0
-        for dn in self.cases:
-            num += dn.num
-        return num
+        return self.cases[-1].num
 
     def getTotalNumDeaths(self):
-        num = 0
-        for dn in self.deaths:
-            num += dn.num
-        return num
+        return self.deaths[-1].num
 
     def __str__(self):
         return c.name+", "+c.state+" ("+c.fips+")"
@@ -158,6 +190,15 @@ def printAll():
     for c in data:
         nstr = c.name+", "+c.state+" ("+c.fips+"): \t\t\t\tcases: "+str(c.getTotalNumCases())+"\tdeaths: "+str(c.getTotalNumDeaths())
         print(nstr)
+def calcBounds():
+    longest_county = 0
+    longest_state = 0
+    for c in data:
+        if len(c.name) > longest_county:
+            longest_county = len(c.name)
+        if len(c.state) > longest_state:
+            longest_state = len(c.state)
+    print("county: ",longest_county,", state: ",longest_state)
 
 def getCountyData(name, state, fips=None):
     c = None
@@ -182,6 +223,11 @@ while running:
             user_county = input("county: ")
             user_state = input("state: ")
             getCountyData(user_county,user_state)
+    elif args[0]=="calcBounds":
+        calcBounds()
     elif args[0]=="exec":
         user_code = input("code: ")
         exec(user_code)
+    elif args[0]=="exec_db":
+        user_code = input("sql: ")
+        exec_database(connection,user_code)
