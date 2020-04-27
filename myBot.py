@@ -1,7 +1,5 @@
 import tweepy
 
-print ("My Twitter bot")
-
 consumer_key="5xSjIE64dtFQwM29rqcOAysxK"
 consumer_secret="vCgfZ4HykNY3EGiq2NNyjlov9Als9NRdG9dSCcUPGKxCoqNwhN"
 
@@ -12,14 +10,6 @@ auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_token_secret)
 
 api = tweepy.API(auth)
-
-subscriberList = api.followers_ids(1249410623160475649)
-
-#for id in subscriberList:
-    #api.send_direct_message(id, "Oh what up")
-
-#api.get_direct_message()
-
 
 FILE_NAME = 'lastSeenId.txt'
 #keeps track of the last seen id from all the mentions
@@ -49,8 +39,18 @@ def reply_to_tweets():
         #if the file contains 'test' than respond to it
         if 'test' in mention.full_text.lower():
             api.update_status('@' + mention.user.screen_name +
-                    'This will be the information', mention.id)
+                    ' This will be the information', mention.id)
 
-reply_to_tweets();
-#api.update_status('Trying update')
-#api.geo_id(id)
+#send dm to all forllowers
+def send_direct_messages():
+    subscriberList = api.followers_ids(1249410623160475649)
+    for id in subscriberList:
+        api.send_direct_message(id, "Oh what up")
+
+#gets all recieved dms text
+def get_all_received():
+    messageData = api.list_direct_messages()
+    for words in messageData:
+        if words.message_create.get(u'sender_id') != '1249410623160475649':
+            text = words.message_create.get(u'message_data').get(u'text')
+            print(text)
