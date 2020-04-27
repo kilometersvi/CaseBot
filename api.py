@@ -3,70 +3,10 @@ import io
 from urllib.request import urlopen
 import mysql.connector
 from mysql.connector import Error
+from sql import db
 
 ny_api = "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"
 
-def create_connection(host_name, user_name, user_password, db_name='mysql'):
-    connection = None
-    try:
-        connection = mysql.connector.connect(
-            host=host_name,
-            user=user_name,
-            passwd=user_password,
-            database=db_name
-        )
-        print("Connection to MySQL DB successful")
-    except Error as e:
-        print(f"The error '{e}' occurred")
-    return connection
-
-connection = create_connection("localhost", "miles", "shrek5")
-
-def exec_database(connection, cmd):
-    cursor = connection.cursor()
-    try:
-        cursor.execute(cmd)
-        print("Database exec'd successfully: ",cmd)
-    except Error as e:
-        print(f"The error '{e}' occurred")
-
-def insert_database(connection, table, valueset, formatt=None):
-    format_str = "("
-    values_str = "VALUES ("
-    if formatt == None:
-        if isinstance(valueset,dict):
-            formatt = valueset.keys()
-        else:
-            raise SyntaxError("invalid insertion data")
-    for f in formatt:
-        format_str += f+", "
-        if isinstance(valueset,list):
-            values_str += "%s, "
-        elif isinstance(valueset,dict):
-            values_str = "%s("+f+"),"
-
-    format_str = format_str[:-1]+")"
-    values_str = values_str[:-1]+")"
-
-    cmd = "INSERT INTO "+table+" "+format_str+" "+values_str
-
-    exec_database(connection, cmd % valueset)
-
-def query_database(connection, cmd):
-    cursor = connection.cursor()
-    try:
-        cursor.execute(cmd)
-        print("Database queried successfully: ", cmd)
-        return cursor
-    except Error as e:
-        print(f"The error '{e}' occurred")
-
-def commit_database(connection):
-    try:
-        connection.commit()
-        print("Database committed successfully")
-    except Error as e:
-        print(f"The error '{e}' occurred")
 
 class County:
     def __init__(self,name,state,fips):
