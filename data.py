@@ -382,13 +382,25 @@ def plot_cases(County,State):
     connection = db.create_connection("localhost", "miles", "shrek5", db_name)
     FIPS = db.query(connection,county_metadata,"FIPS",["county = '{}'".format(County),"state = '{}'".format(State)])[0][0]
     table = "ID"+str(FIPS)
-    dates =
+    dates = db.query(connection,table,"date")
+    total_cases = db.query(connection,table,"total_cases")
+    total_deaths = db.query(connection,table,"total_deaths")
+
+    fig, ax = plt.subplots()
+    ax.plot(dates,total_cases,color='blue',label='Cases')
+    ax.plot(dates,total_deaths,color='red',label='Deaths')
+    plt.legend()
+    plt.xticks(rotation=30)
+    ax.set(xlabel='Date Reported', ylabel='Num',title='COVID-19 Effect in Orange County')
+    ax.grid()
+    fig.savefig("test.png")
+    plt.show()
 
 
 if __name__ == "__main__":
 
     db.log = False
-    plot_cases("Contra Costa","California")
+    plot_cases("Orange","California")
 
     #print(pull_from_nyt(update_past_date="2020-04-23",log=True,end_on_data_skip=True,highlight_errors=True,update_state=True)) #update_past_date="2020-04-20",
     #pull_from_census()
