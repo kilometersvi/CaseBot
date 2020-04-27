@@ -231,7 +231,6 @@ def plot_cases(County,State,filename="plt",show=False):
         plt.show()
     return True
 
-
 if __name__ == "__main__":
 
     db.log = False

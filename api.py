@@ -7,7 +7,7 @@ from sql import db
 
 ny_api = "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"
 
-
+#deprecated, may be useful later tho. see data.py
 class County:
     def __init__(self,name,state,fips):
         self.name = name
@@ -124,8 +124,6 @@ for row in cr:
         c.deaths.append(DateNum(row[0],int(row[5])))
         #print("looped")
 
-sorted(data)
-
 def printAll():
     for c in data:
         nstr = c.name+", "+c.state+" ("+c.fips+"): \t\t\t\tcases: "+str(c.getTotalNumCases())+"\tdeaths: "+str(c.getTotalNumDeaths())
@@ -149,25 +147,29 @@ def getCountyData(name, state, fips=None):
     nstr = "Data for "+c.getData()
     print(nstr)
 
-running = True
-while running:
-    user_in = input("cmd: ")
-    args = user_in.split(" ")
-    if args[0]=="printAll":
-        printAll()
-    elif args[0]=="getCountyData":
-        if args[1]=="byFips":
-            user_fips = input("fips: ")
-            getCountyData("","",str(user_in))
-        elif args[1]=="byName":
-            user_county = input("county: ")
-            user_state = input("state: ")
-            getCountyData(user_county,user_state)
-    elif args[0]=="calcBounds":
-        calcBounds()
-    elif args[0]=="exec":
-        user_code = input("code: ")
-        exec(user_code)
-    elif args[0]=="exec_db":
-        user_code = input("sql: ")
-        exec_database(connection,user_code)
+
+if __name__ == "__main__":
+
+    sorted(data)
+    running = True
+    while running:
+        user_in = input("cmd: ")
+        args = user_in.split(" ")
+        if args[0]=="printAll":
+            printAll()
+        elif args[0]=="getCountyData":
+            if args[1]=="byFips":
+                user_fips = input("fips: ")
+                getCountyData("","",str(user_in))
+            elif args[1]=="byName":
+                user_county = input("county: ")
+                user_state = input("state: ")
+                getCountyData(user_county,user_state)
+        elif args[0]=="calcBounds":
+            calcBounds()
+        elif args[0]=="exec":
+            user_code = input("code: ")
+            exec(user_code)
+        elif args[0]=="exec_db":
+            user_code = input("sql: ")
+            db.run(connection,user_code)
