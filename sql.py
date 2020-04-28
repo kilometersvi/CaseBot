@@ -1,6 +1,7 @@
 import mysql.connector
 from mysql.connector import Error
-from mysql.connector import errors
+#from mysql.connector import errors
+import time
 
 class db:
     log = False
@@ -39,36 +40,26 @@ class db:
         return where
 
     def run(connection, cmd):
-        cursor = connection.cursor(buffered=True)
-        #cursor.close()
-        #cursor = connection.cursor()
         try:
+            cursor = connection.cursor(buffered=True)
             cursor.execute(cmd)
             outstring = "\t[SUCCESS] Database exec'd successfully: {}".format(cmd)
 
             results = []
-            #numResults = 0
             errorResult = False
             try:
                 results = cursor.fetchall()
-                #outstring += " ({} RETURNED) ".format(str(len(cursor.fetchall())))
             except Error as ie:
                 errorResult = True
-                #print("caught error: "+str(ie))
                 pass
-            #print(numResults)
-            #if numResults == None:
-            #    return 0
-            #else:
-            #    return numResults
 
-            if(not errorResult):
+            if not errorResult:
                 outstring += " ({} returned)".format(str(len(results)))
 
             if db.log:
                 print(outstring)
 
-            return results#cursor
+            return results
 
         except Error as e:
             raise Warning("[EXECERROR]\n\tCommand: {}\n\tError: {}".format(cmd,str(e)))
@@ -110,7 +101,12 @@ class db:
 
         cmd = "INSERT INTO "+table+" "+format_str+" "+values_str
         #print(cmd.format(*valueset))
-        db.run(connection, cmd.format(*valueset))
+        try:
+            db.run(connection, cmd.format(*valueset))
+        except mysql.connector.errors.IntegrityError as e:
+            print("UploadError")
+        #except _mysql_connector.MySQLInterfaceError as e:
+        #    print("UploadError2")
 
     def update_multiple(connection, table, fieldset, valueset, condition=None):
         if(len(valueset) != len(fieldset)):
@@ -150,6 +146,32 @@ class db:
                 return True
         return False
 
+    def get_column_names(connection, table):
+        cmd = f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '{table}'"
+        r = db.run(connection, cmd)
+        lis = []
+        for s in r:
+            lis.append(s[0])
+        return lis
+
+    def get_tables(connection,from_db=None,like=None,where=None):
+        cmd = "SHOW TABLES "
+        if from_db:
+            cmd += "FROM "+from_db
+        if where:
+            cmd += db.where_gen(where)
+        elif like:
+            cmd += like
+        db.run(connection, cmd)
+
+    def print_all(results):
+        wasPrinted = False
+        for row in results:
+            wasPrinted = True
+            print(row)
+        if not wasPrinted:
+            print("empty set")
+
     def commit(connection):
         try:
             connection.commit()
@@ -157,16 +179,8 @@ class db:
                 print("\t[SUCCESS] Database committed successfully")
             time.sleep(0.1)
             return True
-        except Error as e:
+        except mysql.connector.errors as e:
             if db.log:
                 print(f"[FAILURE] The error '{e}' occurredwhile committing.")
             raise Warning("[FAILURE] CommitError: "+e)
             return False
-
-    def print_all(c):
-        wasPrinted = False
-        for row in c:
-            wasPrinted = True
-            print(row)
-        if not wasPrinted:
-            print("empty set")
