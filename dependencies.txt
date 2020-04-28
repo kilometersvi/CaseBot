@@ -1,0 +1,5 @@
+CensusData
+mysql-connector-python
+matplotlib
+pandas
+numpy
