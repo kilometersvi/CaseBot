@@ -70,4 +70,4 @@ if __name__ == '__main__':
     get_all_received()
     send_direct_messages()
     #need to only run this everyday
-    #send direct messages
+    #send_direct_messages()
