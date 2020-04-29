@@ -12,6 +12,8 @@ auth.set_access_token(access_token, access_token_secret)
 
 api = tweepy.API(auth)
 
+allMembers = {}
+
 FILE_NAME = 'lastSeenId.txt'
 #keeps track of the last seen id from all the mentions
 def retrieve_last_seen_id(file_name):
