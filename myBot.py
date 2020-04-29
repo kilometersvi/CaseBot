@@ -1,3 +1,4 @@
+from userBase import userBase
 import tweepy
 
 consumer_key="5xSjIE64dtFQwM29rqcOAysxK"
@@ -36,21 +37,37 @@ def reply_to_tweets():
         #puts the last see ids onto the file
         last_seen_id = mention.id
         store_last_seen_id(last_seen_id, FILE_NAME)
-        #if the file contains 'test' than respond to it
-        if 'test' in mention.full_text.lower():
-            api.update_status('@' + mention.user.screen_name +
-                    ' This will be the information', mention.id)
+        #respond to the file using userbase
+        information = userbase.fips_from_text(mention.full_text.lower())
+        api.update_status('@' + mention.user.screen_name + ' ' + information, mention.id)
 
-#send dm to all forllowers
+#send dm to all followers
 def send_direct_messages():
-    subscriberList = api.followers_ids(1249410623160475649)
-    for id in subscriberList:
-        api.send_direct_message(id, "Oh what up")
+    #subscriberList = api.followers_ids(1249410623160475649)
+    for id in allMembers:
+        message = allMembers[id]
+        api.send_direct_message(id, userbase.fips_from_text(message))
+
+def add_dictionary(id, message):
+    if id not in allMembers:
+        allMembers[id] = message
+    if not userbase.if_user_exists(id):
+        userbase.new_user(id, location=message)
+    return allMembers
 
 #gets all recieved dms text
 def get_all_received():
     messageData = api.list_direct_messages()
+    #print(messageData)
     for words in messageData:
         if words.message_create.get(u'sender_id') != '1249410623160475649':
             text = words.message_create.get(u'message_data').get(u'text')
-            print(text)
+            id = words.message_create.get(u'sender_id')
+            add_dictionary(id, text)
+            api.send_direct_message(id, userbase.fips_from_text(text))
+
+if __name__ == '__main__':
+    get_all_received()
+    send_direct_messages()
+    #need to only run this everyday
+    #send direct messages
