@@ -29,7 +29,7 @@ class data:
 
     #unknown counties have table 'ID'+state_fips+'999'
 
-    def to_datetime(d):
+    def to_datetime(d): #d = string YYYY-MM-DD
         year = d[:4]
         month = d[5:7]
         day = d[8:10]
@@ -61,7 +61,34 @@ class data:
         connection.close()
         return 0
 
-    def pull_from_nyt(retries=5,commit_every_insert=False,log=False,end_on_data_skip=False,highlight_errors=False,update_past_date="2020-01-20",update_state=False):
+    def text_from_fips(fips):
+        fips = str(fips)
+        connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass, data.db_name)
+        res = None
+        outstr = None
+        if len(fips) > 2:
+            res = db.query(connection,data.county_metadata,"county, state","FIPS = {}".format(fips))
+            if len(res) > 0:
+                outstr = "{}, {}".format(res[0][0],res[0][1])
+        elif fips != "0":
+            res = db.query(connection,data.state_metadata,"state","code = {}".format(fips))
+            if len(res) > 0:
+                outstr = res[0][0]
+        else:
+            outstr = "USA"
+        if outstr != None:
+            return outstr
+        else:
+            return None
+
+    def c_s_from_text(location):
+        if ", " in location:
+            county,state = location.split(", ")
+            return (county, state)
+        else:
+            return ("All Counties", location)
+
+    def update_covid_data(retries=5,commit_every_insert=False,log=False,end_on_data_skip=False,highlight_errors=False,update_past_date="2020-01-20",update_state=False):
         '''
         0    1       2       3   4       5
         date,county,state,fips,cases,deaths
@@ -195,7 +222,7 @@ class data:
             raise Warning("Connection to SQL Server lost.")
         return last_committed_date
 
-    def get_population_data(log=False):
+    def update_population_data(log=False):
         pd.set_option('display.expand_frame_repr', False)
         pd.set_option('display.precision', 2)
 
@@ -237,11 +264,24 @@ class data:
         db.commit(connection)
         connection.close()
 
-    def plot_cases(County,State,filename="default",show=False):
+    def get_county_data(fips, date="*"): #{date: (caseNum, deathNum) }. fun fact: if data exists for county on certain day, it is still uploaded to api, even if data is the same as the prior day's data. as such there are no skipped days. keep in mind when calcing new cases
+        connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass, data.db_name)
+        table = "ID"+str(fips)
+        if date == "*":
+            dataraw = db.query(connection,table,"*")
+        else:
+            dataraw = db.query(connection,table,"*",condition="date = '{}'".format(date))
+        dataclean = {}
+        for dr in dataraw:
+            dataclean[str(dr[0])] = (dr[1],dr[2])
+        return dataclean
+
+    def plot(fips, filename="default",show=False,scale="linear"):
+        text = data.text_from_fips(fips)
         if filename == "default":
+            County, State = data.c_s_from_text(text)
             filename = "plot-"+County+"-"+State+".png"
-        FIPS = data.fips_from_text("{}, {}".format(County,State))
-        table = "ID"+str(FIPS)
+        table = "ID"+str(fips)
         connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass, data.db_name)
         dates = db.query(connection,table,"date")
         total_cases = db.query(connection,table,"total_cases")
@@ -252,7 +292,8 @@ class data:
         ax.plot(dates,total_deaths,color='red',label='Deaths')
         plt.legend()
         plt.xticks(rotation=25)
-        ax.set(xlabel='Date Reported', ylabel='Num',title='COVID-19 Effect in Orange County')
+        plt.yscale(scale)
+        ax.set(xlabel='Date Reported', ylabel='Num',title='COVID-19 Effect in {}'.format(text))
         ax.grid()
         fig.savefig(filename)
         if show:
@@ -262,10 +303,10 @@ class data:
 
 if __name__ == "__main__":
 
-    db.log = True
-    #data.plot_cases("Orange","California",show=True)
+    db.log = False
     connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass, data.db_name)
-    #db.get_column_names(connection,data.county_metadata)
+    fips = data.fips_from_text("Contra Costa, California")
+    data.plot(fips,show=True,scale="log")
 
-    #print(data.pull_from_nyt(update_past_date="2020-04-23",log=True,end_on_data_skip=True,highlight_errors=True,update_state=True)) #update_past_date="2020-04-20",
-    #pull_from_census()
+    #print(data.update_covid_data(update_past_date="2020-04-28",log=True,end_on_data_skip=True,highlight_errors=True,update_state=True)) #update_past_date="2020-04-20",
+    #data.update_population_data()

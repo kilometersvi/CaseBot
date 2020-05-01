@@ -60,7 +60,7 @@ class userbase:
         connection.close()
 
         #    if userbase.log:
-        #        print("[UPLOADERROR] error uploading, probable duplicate entry with id ",id)
+        #        print("[UPLOADERROR] error uploading, probable duplicate entry with id ",id) cant catch duplicate id?? bug
 
     def set(id,field,new_value,platform="twitter"): #set attribute of user
         connection = db.create_connection(data.sql_addr, userbase.sql_user, userbase.sql_pass, data.db_name)
