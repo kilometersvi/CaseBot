@@ -123,9 +123,10 @@ class data:
 
     #update functions
     def update_all(retries=5,log=False,commit_every_insert=False,end_on_data_skip=False,highlight_errors=False,update_state_in_county_update=True,min_wait_time = 20,min_deaths_to_county_pop_pull=50):
-        data.update_county_data(retries=retries,log=log,commit_every_insert=commit_every_insert,end_on_data_skip=end_on_data_skip,highlight_errors=highlight_errors,update_state=update_state_in_county_update,min_wait_time=min_wait_time,min_deaths_to_county_pop_pull=min_deaths_to_county_pop_pull)
+        was_new_county_found = data.update_county_data(retries=retries,log=log,commit_every_insert=commit_every_insert,end_on_data_skip=end_on_data_skip,highlight_errors=highlight_errors,update_state=update_state_in_county_update,min_wait_time=min_wait_time,min_deaths_to_county_pop_pull=min_deaths_to_county_pop_pull)
 
-        data.update_all_population_data(log=log,onlyTotal=True)
+        if(was_new_county_found):
+            data.update_all_population_data(log=log,onlyTotal=True)
 
         data.update_state_data(retries=retries,log=log,commit_every_insert=commit_every_insert,highlight_errors=highlight_errors,min_wait_time=min_wait_time)
 
@@ -208,7 +209,7 @@ class data:
                                 if len(c) != 0:
                                     row[3] = str(c[0][0])
                                     if log:
-                                        print(logtab,'[ERRORCATCH] empty FIPS field discovered, FIPS was found as ',row[3])
+                                        print(logtab,'[ERRORCATCH] empty FIPS field discovered, FIPS found as ',row[3])
                                 elif row[1] == 'Unknown':
                                     is_real_fips = False
                                     cc = db.query(connection,data.state_metadata,fieldset="FIPS",condition="state = '"+row[2]+"'")
@@ -216,7 +217,7 @@ class data:
                                         if row[2] in data.exception_states:
                                             row[3] = str(data.exception_states[row[2]])+"999"
                                             if log:
-                                                print(logtab,'[ERRORCATCH] encountered either uncountied state or "unknown" county in previously undetected state.')
+                                                print(logtab,'[ERRORCATCH] encountered either uncountied state or "unknown" county in previously undetected state. FIPS found as '+row[3])
                                         else:
                                             if log:
                                                 print("[ERRORCATCH_FAILURE] 'Unknown' county detected, but state is unknown. data skipped")
@@ -333,7 +334,7 @@ class data:
         else:
             raise Warning("Connection to SQL Server lost.")
 
-        return last_committed_date
+        return was_new_county_found
 
     def pull_population_data(fips,log=False,onlyTotal=False):
         params = []
