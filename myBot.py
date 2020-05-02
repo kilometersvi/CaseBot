@@ -59,13 +59,13 @@ def string_to_send(fips):
     new_deaths = information[today][1] - yesterday_info[yesterday][1]
     if new_deaths < 0:
         new_deaths = 0
-    info_string = "Total Number of Cases: " + total_cases + "\n" + "Total Number of Deaths: " + total_deaths + "\n" + "New Cases Today: " + new_cases + "\n" +"New Deaths Today: " + new_deaths
+    info_string = "Total Number of Cases: " + str(total_cases) + "\n" + "Total Number of Deaths: " + str(total_deaths) + "\n" + "New Cases Today: " + str(new_cases) + "\n" +"New Deaths Today: " + str(new_deaths)
     return info_string
 
 
 #send dm to all followers
 def send_direct_messages():
-    #subscriberList = api.followers_ids(1249410623160475649)
+    subscriberList = api.followers_ids(1249410623160475649)
     for id in allMembers:
         fips = allMembers[id]
         information = string_to_send(fips)
@@ -98,6 +98,5 @@ def get_all_received():
 if __name__ == '__main__':
     reply_to_tweets()
     get_all_received()
-    send_direct_messages()
     #need to only run this everyday
     #send_direct_messages()
