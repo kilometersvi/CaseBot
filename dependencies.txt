@@ -5,3 +5,4 @@ pandas
 numpy
 csv
 func-timeout
+tweepy
