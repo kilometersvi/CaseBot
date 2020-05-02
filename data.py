@@ -13,8 +13,8 @@ import sys, traceback
 from func_timeout import func_timeout,FunctionTimedOut
 
 class data:
-    ny_api = "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"
-
+    ny_county_api = "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"
+    ny_state_api = "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv"
     #sql login
     sql_addr = "localhost"
     sql_user = "miles"
@@ -35,7 +35,30 @@ class data:
     def init_db():
         connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass)
         db.run(connection, "CREATE DATABASE covidbot")
+        data.create_meta_tables(connection)
         connection.close()
+
+    def create_meta_tables(connection):
+        if not db.if_table_exists(connection, data.county_metadata):
+            if log:
+                print(logtab,"[NEWDATA] county metadata table does not exist, creating")
+            db.run(connection, "create table `{}` (FIPS INT, county VARCHAR(36), state VARCHAR(24), population INT, percent_0to9 FLOAT, percent_10to19 FLOAT, percent_20to29 FLOAT, percent_30to39 FLOAT, percent_40to49 FLOAT, percent_50to59 FLOAT, percent_60to69 FLOAT, percent_70to79 FLOAT, percent_80plus FLOAT)".format(data.county_metadata))
+            db.commit(connection)
+
+        if not db.if_table_exists(connection, data.state_metadata):
+            if log:
+                print(logtab,"[NEWDATA] state metadata table does not exist, creating")
+            db.run(connection, "create table `{}` (state VARCHAR(36), FIPS MEDIUMINT(9), population INT, percent_0to9 FLOAT, percent_10to19 FLOAT, percent_20to29 FLOAT, percent_30to39 FLOAT, percent_40to49 FLOAT, percent_50to59 FLOAT, percent_60to69 FLOAT, percent_70to79 FLOAT, percent_80plus FLOAT)".format(data.state_metadata))
+            db.commit(connection)
+
+        if not db.if_table_exists(connection, data.misc_data):
+            if log:
+                print(logtab,"[NEWDATA] misc data table does not exist, creating")
+            db.run(connection, "create table `{}` (i INT AUTO_INCREMENT NOT NULL, var VARCHAR(36) NOT NULL, value VARCHAR(64), primary key (i) )".format(data.misc_data))
+            db.insert(connection,data.misc_data,["last_committed_date","2020-01-20"],["var", "value"])
+            db.insert(connection,data.misc_data,["last_committed_state_date","2020-01-20"],["var", "value"])
+            db.commit(connection)
+            #last_committed_date = "2020-01-20"
 
     def to_datetime(d): #d = string YYYY-MM-DD
         year = d[:4]
@@ -96,7 +119,14 @@ class data:
         else:
             return ("All Counties", location)
 
-    def update(retries=5,commit_every_insert=False,log=False,end_on_data_skip=False,highlight_errors=False,update_state=True,min_wait_time = 20):
+    def update(retries=5,log=False,end_on_data_skip=False,highlight_errors=False,update_state_in_county_update=True,min_wait_time = 20,min_deaths_to_county_pop_pull=50):
+        data.update_county_data(retries=retries,log=log,end_on_data_skip=end_on_data_skip,highlight_errors=highlight_errors,update_state=update_state_in_county_update,min_wait_time=min_wait_time,min_deaths_to_county_pop_pull=min_deaths_to_county_pop_pull)
+
+        data.update_all_population_data(log=log,onlyTotal=True)
+
+        data.update_state_data(retries=retries,log=log,commit_every_insert=commit_every_insert,highlight_errors=highlight_errors,min_wait_time=min_wait_time)
+
+    def update_county_data(retries=5,commit_every_insert=False,log=False,end_on_data_skip=False,highlight_errors=False,update_state=True,min_wait_time = 20,min_deaths_to_county_pop_pull=50): # if mdtcpp = -1, dont pull county pop data
 
         last_updated_date = None
         was_data_skipped = False
@@ -116,27 +146,9 @@ class data:
                         logtab="\t"
                     current_tries = 0
 
-                    if not db.if_table_exists(connection, data.county_metadata):
-                        if log:
-                            print(logtab,"[NEWDATA] county metadata table does not exist, creating")
-                        db.run(connection, "create table `{}` (FIPS INT, county VARCHAR(36), state VARCHAR(24), population INT, percent_0to9 FLOAT, percent_10to19 FLOAT, percent_20to29 FLOAT, percent_30to39 FLOAT, percent_40to49 FLOAT, percent_50to59 FLOAT, percent_60to69 FLOAT, percent_70to79 FLOAT, percent_80plus FLOAT)".format(data.county_metadata))
-                        db.commit(connection)
+                    data.create_meta_tables(connection)
 
-                    if not db.if_table_exists(connection, data.state_metadata):
-                        if log:
-                            print(logtab,"[NEWDATA] state metadata table does not exist, creating")
-                        db.run(connection, "create table `{}` (state VARCHAR(36), FIPS MEDIUMINT(9), population INT, percent_0to9 FLOAT, percent_10to19 FLOAT, percent_20to29 FLOAT, percent_30to39 FLOAT, percent_40to49 FLOAT, percent_50to59 FLOAT, percent_60to69 FLOAT, percent_70to79 FLOAT, percent_80plus FLOAT)".format(data.state_metadata))
-                        db.commit(connection)
-
-                    if not db.if_table_exists(connection, data.misc_data):
-                        if log:
-                            print(logtab,"[NEWDATA] misc data table does not exist, creating")
-                        db.run(connection, "create table `{}` (i INT AUTO_INCREMENT NOT NULL, var VARCHAR(36) NOT NULL, value VARCHAR(64), primary key (i) )".format(data.misc_data))
-                        db.insert(connection,data.misc_data,["last_committed_date","2020-01-20"],["var", "value"])
-                        db.commit(connection)
-                        last_committed_date = "2020-01-20"
-                    else:
-                        last_committed_date = db.query(connection, data.misc_data, "value", "var = 'last_committed_date'")[0][0]
+                    last_committed_date = db.query(connection, data.misc_data, "value", "var = 'last_committed_date'")[0][0]
                     last_updated_date = last_committed_date
 
                     '''
@@ -144,8 +156,8 @@ class data:
                     date,county,state,fips,cases,deaths
                     '''
                     if log:
-                        print(logtab,'[PULL] downloading NYT Covid19 data...')
-                    response = urlopen(data.ny_api)
+                        print(logtab,'[PULL] downloading NYT Covid19 county data...')
+                    response = urlopen(data.ny_county_api)
                     cr = csv.reader(line.decode() for line in response)
                     for row in cr:
                         if row[1]!="county" and data.to_datetime(row[0])>=data.to_datetime(last_committed_date):
@@ -226,19 +238,19 @@ class data:
                             if len(c) == 0:
                                 if log:
                                     print(logtab,f'[NEWDATA] new county {row[3]} detected, adding to table (real FIPS code: {is_real_fips})')
-                                if not is_real_fips:
-                                    db.insert(connection,data.county_metadata,[int(row[3]),row[1],row[2]],["FIPS","county","state"])
-                                else:
-                                    popdata = func_timeout(min_wait_time+10*current_tries,data.pull_population_data,args=[int(row[3])],kwargs={"log":log})
-                                    for index, rowc in popdata.iterrows():
-                                        #fips = int(""+index.params()[0][1]+index.params()[1][1])
-                                        db.insert(connection,data.county_metadata,
-                                                  [int(row[3]),row[1],row[2],rowc["population_size"], rowc['percent_0to9'], rowc['percent_10to19'], rowc['percent_20to29'],
-                                                   rowc['percent_30to39'] ,rowc['percent_40to49'], rowc['percent_50to59'], rowc['percent_60to69'],
-                                                   rowc['percent_70to79'], rowc['percent_80plus']],
-                                                  ["FIPS","county","state","population",'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
-                                                  'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus'])
-                                        break
+                                db.insert(connection,data.county_metadata,[int(row[3]),row[1],row[2]],["FIPS","county","state"])
+
+                                '''popdata = func_timeout(min_wait_time+10*current_tries,data.pull_population_data,args=[int(row[3])],kwargs={"log":log})
+                                for index, rowc in popdata.iterrows():
+                                    #fips = int(""+index.params()[0][1]+index.params()[1][1])
+                                    db.insert(connection,data.county_metadata,
+                                              [int(row[3]),row[1],row[2],rowc["population_size"], rowc['percent_0to9'], rowc['percent_10to19'], rowc['percent_20to29'],
+                                               rowc['percent_30to39'] ,rowc['percent_40to49'], rowc['percent_50to59'], rowc['percent_60to69'],
+                                               rowc['percent_70to79'], rowc['percent_80plus']],
+                                              ["FIPS","county","state","population",'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
+                                              'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus'])
+                                    break'''
+
                                 if commit_every_insert:
                                     last_committed_date = row[0]
                                     db.update(connection, data.misc_data, "value", str(last_committed_date), condition="var = 'last_committed_date'")
@@ -246,8 +258,7 @@ class data:
                             elif len(c) > 1:
                                 raise Warning("META database contains duplicate entries!")
                                 exit()
-                            #else:
-                            #    (r_FIPS,r_county,r_state,r_pop) = c.fetchall()[0]
+
                             current_table = "ID"+str(int(row[3]))
                             do_insert = False
                             if not db.if_table_exists(connection,current_table):
@@ -261,9 +272,18 @@ class data:
                             else:
                                 if len(db.query(connection, current_table, condition="date = '{}'".format(data.to_datetime(row[0])))) == 0:
                                     do_insert = True
+                            if is_real_fips and min_deaths_to_county_pop_pull <= int(row[5]):
+                                popdata = func_timeout(min_wait_time+10*current_tries,data.pull_population_data,args=[int(row[3])],kwargs={"log":log})
+                                for index, rowc in popdata.iterrows():
+                                    db.update(connection,data.county_metadata,fieldset=
+                                              ["population",'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
+                                              'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus'],
+                                              valueset=[rowc["population_size"], rowc['percent_0to9'], rowc['percent_10to19'], rowc['percent_20to29'],
+                                              rowc['percent_30to39'] ,rowc['percent_40to49'], rowc['percent_50to59'], rowc['percent_60to69'],
+                                              rowc['percent_70to79'], rowc['percent_80plus']])
                             if do_insert:
                                 db.insert(connection,current_table,[data.to_datetime(row[0]),int(row[4]),int(row[5])],formatt=["date","total_cases","total_deaths"])
-                                if(commit_every_insert):
+                                if commit_every_insert:
                                     last_committed_date = row[0]
                                     db.update(connection, data.misc_data, "value", str(last_committed_date), condition="var = 'last_committed_date'")
                                     db.commit(connection)
@@ -298,9 +318,10 @@ class data:
             connection.close()
         else:
             raise Warning("Connection to SQL Server lost.")
+
         return last_committed_date
 
-    def pull_population_data(fips,log=False):
+    def pull_population_data(fips,log=False,onlyTotal=False):
         params = []
         if fips != "*":
             fips = str(fips)
@@ -319,15 +340,24 @@ class data:
                     print(f'\t[POPDATA] {fips} detected as state')
                 params = [('state',fips)]
             elif len(fips) > 5: #city fips
+                place = fips[2:]
+                state = fips[:2]
                 if log:
-                    print(f'\t[POPDATA] {fips} detected as place, state set to {fips[:2]} and place to {fips[2:]}')
-                params = [('state',fips[:2]),('place',fips[2:])]
-            else:
+                    print(f'\t[POPDATA] {fips} detected as place, state set to {state} and place to {place}')
+                params = [('state',state),('place',place)]
+            else: #county fips
                 if len(fips) < 5:
                     fips = "0"+fips
+                county = fips[2:]
+                state = fips[:2]
+                if county == '999':
+                    if log:
+                        print('\t[POPDATA_ERRORCATCH] cant get pop data for unknown')
+                        return None
                 if log:
-                    print(f'\t[POPDATA] {fips} detected as county, state set to {fips[:2]} and county to {fips[2:]}')
-                params = [('state',fips[:2]),('county',fips[2:])]
+                    print(f'\t[POPDATA] {fips} detected as county, state set to {state} and county to {county}')
+
+                params = [('state',state),('county',county)]
         else:
             params = [('county', '*')]
             if log:
@@ -335,32 +365,36 @@ class data:
         if log:
             print('\t[PULL] pulling US Census Data...')
 
-        popdata = censusdata.download('acs5',2015,censusdata.censusgeo(params),
-                                      ['B01001_001E','B01001_003E','B01001_004E','B01001_005E','B01001_006E','B01001_007E',
-                                       'B01001_008E','B01001_009E','B01001_010E','B01001_011E','B01001_012E','B01001_013E',
-                                       'B01001_014E','B01001_015E','B01001_016E','B01001_017E','B01001_018E','B01001_019E',
-                                       'B01001_020E','B01001_021E','B01001_022E','B01001_023E','B01001_024E','B01001_025E',
-                                       'B01001_027E','B01001_028E','B01001_029E','B01001_030E','B01001_031E','B01001_032E',
-                                       'B01001_033E','B01001_034E','B01001_035E','B01001_036E','B01001_037E','B01001_038E',
-                                       'B01001_039E','B01001_040E','B01001_041E','B01001_042E','B01001_043E','B01001_044E',
-                                       'B01001_045E','B01001_046E','B01001_047E','B01001_048E','B01001_049E'])
-        popdata['percent_0to9'] = (popdata.B01001_003E + popdata.B01001_004E + popdata.B01001_027E + popdata.B01001_028E) / popdata.B01001_001E * 100
-        popdata['percent_10to19'] = (popdata.B01001_005E + popdata.B01001_006E + popdata.B01001_007E + popdata.B01001_029E + popdata.B01001_030E + popdata.B01001_031E) / popdata.B01001_001E * 100
-        popdata['percent_20to29'] = (popdata.B01001_008E + popdata.B01001_009E + popdata.B01001_010E + popdata.B01001_011E + popdata.B01001_032E + popdata.B01001_033E + popdata.B01001_034E + popdata.B01001_035E) / popdata.B01001_001E * 100
-        popdata['percent_30to39'] = (popdata.B01001_012E + popdata.B01001_013E + popdata.B01001_036E + popdata.B01001_037E) / popdata.B01001_001E * 100
-        popdata['percent_40to49'] = (popdata.B01001_014E + popdata.B01001_015E + popdata.B01001_038E + popdata.B01001_039E) / popdata.B01001_001E * 100
-        popdata['percent_50to59'] = (popdata.B01001_016E + popdata.B01001_017E + popdata.B01001_040E + popdata.B01001_041E) / popdata.B01001_001E * 100
-        popdata['percent_60to69'] = (popdata.B01001_018E + popdata.B01001_019E + popdata.B01001_020E + popdata.B01001_021E + popdata.B01001_042E + popdata.B01001_043E + popdata.B01001_044E + popdata.B01001_045E) / popdata.B01001_001E * 100
-        popdata['percent_70to79'] = (popdata.B01001_022E + popdata.B01001_023E + popdata.B01001_046E + popdata.B01001_047E) / popdata.B01001_001E * 100
-        popdata['percent_80plus'] = (popdata.B01001_024E + popdata.B01001_025E + popdata.B01001_048E + popdata.B01001_049E) / popdata.B01001_001E * 100
+        if not onlyTotal:
+            popdata = censusdata.download('acs5',2015,censusdata.censusgeo(params),
+                                          ['B01001_001E','B01001_003E','B01001_004E','B01001_005E','B01001_006E','B01001_007E',
+                                           'B01001_008E','B01001_009E','B01001_010E','B01001_011E','B01001_012E','B01001_013E',
+                                           'B01001_014E','B01001_015E','B01001_016E','B01001_017E','B01001_018E','B01001_019E',
+                                           'B01001_020E','B01001_021E','B01001_022E','B01001_023E','B01001_024E','B01001_025E',
+                                           'B01001_027E','B01001_028E','B01001_029E','B01001_030E','B01001_031E','B01001_032E',
+                                           'B01001_033E','B01001_034E','B01001_035E','B01001_036E','B01001_037E','B01001_038E',
+                                           'B01001_039E','B01001_040E','B01001_041E','B01001_042E','B01001_043E','B01001_044E',
+                                           'B01001_045E','B01001_046E','B01001_047E','B01001_048E','B01001_049E'])
+            popdata['percent_0to9'] = (popdata.B01001_003E + popdata.B01001_004E + popdata.B01001_027E + popdata.B01001_028E) / popdata.B01001_001E * 100
+            popdata['percent_10to19'] = (popdata.B01001_005E + popdata.B01001_006E + popdata.B01001_007E + popdata.B01001_029E + popdata.B01001_030E + popdata.B01001_031E) / popdata.B01001_001E * 100
+            popdata['percent_20to29'] = (popdata.B01001_008E + popdata.B01001_009E + popdata.B01001_010E + popdata.B01001_011E + popdata.B01001_032E + popdata.B01001_033E + popdata.B01001_034E + popdata.B01001_035E) / popdata.B01001_001E * 100
+            popdata['percent_30to39'] = (popdata.B01001_012E + popdata.B01001_013E + popdata.B01001_036E + popdata.B01001_037E) / popdata.B01001_001E * 100
+            popdata['percent_40to49'] = (popdata.B01001_014E + popdata.B01001_015E + popdata.B01001_038E + popdata.B01001_039E) / popdata.B01001_001E * 100
+            popdata['percent_50to59'] = (popdata.B01001_016E + popdata.B01001_017E + popdata.B01001_040E + popdata.B01001_041E) / popdata.B01001_001E * 100
+            popdata['percent_60to69'] = (popdata.B01001_018E + popdata.B01001_019E + popdata.B01001_020E + popdata.B01001_021E + popdata.B01001_042E + popdata.B01001_043E + popdata.B01001_044E + popdata.B01001_045E) / popdata.B01001_001E * 100
+            popdata['percent_70to79'] = (popdata.B01001_022E + popdata.B01001_023E + popdata.B01001_046E + popdata.B01001_047E) / popdata.B01001_001E * 100
+            popdata['percent_80plus'] = (popdata.B01001_024E + popdata.B01001_025E + popdata.B01001_048E + popdata.B01001_049E) / popdata.B01001_001E * 100
 
-        popdata = popdata[['B01001_001E', 'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
-                           'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus']]
+            popdata = popdata[['B01001_001E', 'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
+                               'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus']]
+        else:
+            popdata = censusdata.download('acs5',2015,censusdata.censusgeo(params),['B01001_001E'])
+
         popdata = popdata.rename(columns={'B01001_001E': 'population_size'})
 
         return popdata
 
-    def update_all_population_data(log=False): #does not find city data
+    def update_all_population_data(log=False,onlyTotal=False): #does not find city data
 
         '''
         county65plus = censusdata.download('acs5', 2015, censusdata.censusgeo([('county', '*')]),
@@ -379,7 +413,7 @@ class data:
         #county65plus.sort_values('percent_65plus', ascending=False, inplace=True)
         #county65plus.head(30)
         '''
-        popdata = pull_population_data('*')
+        popdata = pull_population_data('*',log=log,onlyTotal=onlyTotal)
 
         connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass, data.db_name)
 
@@ -387,7 +421,6 @@ class data:
             #l = columnData.tolist()
             #print('row: ', index,' | data: ', row)
             fips = int(""+index.params()[0][1]+index.params()[1][1])
-            #print(str(fips))
 
             c = db.query(connection,data.county_metadata,fieldset=["population"],condition="FIPS = "+str(fips))
             if len(c) == 0:
@@ -396,18 +429,154 @@ class data:
                 raise Warning(data.county_metadata+" database contains duplicate entries!")
                 exit()
             if(type(c[0][0]==None)):
-                if(log):
+                if log:
                     print("data: ",row)
-                db.update_multiple(connection,data.county_metadata,
-                                   ["population",'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
-                                   'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus'],
-                                   [row["population_size"], row['percent_0to9'], row['percent_10to19'], row['percent_20to29'],
-                                    row['percent_30to39'] ,row['percent_40to49'], row['percent_50to59'], row['percent_60to69'],
-                                    row['percent_70to79'], row['percent_80plus']],
-                                    "FIPS = {}".format(fips))
+                if not onlyTotal:
+                    db.update(connection,data.county_metadata,
+                                       ["population",'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
+                                       'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus'],
+                                       [row["population_size"], row['percent_0to9'], row['percent_10to19'], row['percent_20to29'],
+                                        row['percent_30to39'] ,row['percent_40to49'], row['percent_50to59'], row['percent_60to69'],
+                                        row['percent_70to79'], row['percent_80plus']],
+                                        "FIPS = {}".format(fips))
+                else:
+                    db.update(connection,data.county_metadata,"population",row["population_size"],"FIPS = {}".format(fips))
 
         db.commit(connection)
         connection.close()
+
+    def update_state_data(log=False,retries=5,commit_every_insert=False,highlight_errors=False,min_wait_time=20):
+
+        last_committed_date = None
+        last_updated_date = None
+        current_tries = 0
+        finish = False
+        prev_date = "2020-01-20"
+        connection = None
+
+        while(current_tries<retries and not finish):
+            try:
+                connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass, data.db_name)
+
+                if connection != None:
+                    logtab = ""
+                    if highlight_errors:
+                        logtab="\t"
+                    current_tries = 0
+
+                    data.create_meta_tables(connection)
+
+                    last_committed_date = db.query(connection, data.misc_data, "value", "var = 'last_committed_state_date'")[0][0]
+                    last_updated_date = last_committed_date
+
+                    if log:
+                        print(logtab,'[PULL] downloading NYT Covid19 state data...')
+                    response = urlopen(data.ny_state_api)
+                    cr = csv.reader(line.decode() for line in response)
+                    '''
+                    0    1     2    3     4
+                    date,state,fips,cases,deaths
+                    '''
+                    for row in cr:
+                        if row[1]!="state" and data.to_datetime(row[0])>=data.to_datetime(last_committed_date):
+                            last_updated_date = row[0]
+                            if data.to_datetime(prev_date) < data.to_datetime(row[0]):
+                                prev_date = row[0]
+                                last_committed_date = row[0]
+                                db.update(connection, data.misc_data, "value", str(last_committed_date), condition="var = 'last_committed_state_date'")
+                                db.commit(connection)
+                            if log:
+                                print("\t",row)
+
+                            if "'" in row[1]:
+                                if log:
+                                    print(logtab,'[ERRORCATCH] detected invalid char in field, adjusted')
+                                row[i] = row[i].replace("'","\\'")
+
+                            c = db.query(connection,data.state_metadata,fieldset="FIPS",condition="FIPS = "+row[2])
+                            if len(c) == 0:
+                                if log:
+                                    print(logtab,f'[NEWDATA] new state {row[2]} detected, adding to table')
+                                #db.insert(connection,data.state_metadata,[row[1],int(row[2])],["state","FIPS"])
+
+                                popdata = func_timeout(min_wait_time+10*current_tries,data.pull_population_data,args=[int(row[2])],kwargs={"log":log})
+                                for index, rowc in popdata.iterrows():
+                                    #fips = int(""+index.params()[0][1]+index.params()[1][1])
+                                    db.insert(connection,data.state_metadata,
+                                              [row[1],int(row[2]),rowc["population_size"], rowc['percent_0to9'], rowc['percent_10to19'], rowc['percent_20to29'],
+                                               rowc['percent_30to39'] ,rowc['percent_40to49'], rowc['percent_50to59'], rowc['percent_60to69'],
+                                               rowc['percent_70to79'], rowc['percent_80plus']],
+                                              ["state","FIPS","population",'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
+                                              'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus'])
+                                    break
+                                if commit_every_insert:
+                                    last_committed_date = row[0]
+                                    db.update(connection, data.misc_data, "value", str(last_committed_date), condition="var = 'last_committed_state_date'")
+                                    db.commit(connection)
+                            elif len(c) > 1:
+                                raise Warning("META database contains duplicate entries!")
+                                exit()
+                            current_table = "ID"+str(int(row[2]))
+                            do_insert = False
+                            if not db.if_table_exists(connection,current_table):
+                                if log:
+                                    print(logtab,'[NEWDATA] new state detected, creating table')
+                                db.run(connection, "create table {} (date DATE, total_cases INT, total_deaths INT)".format(current_table))
+                                last_committed_date = row[0]
+                                db.update(connection, data.misc_data, "value", str(last_committed_date), condition="var = 'last_committed_state_date'")
+                                db.commit(connection)
+                                do_insert = True
+                            else:
+                                if len(db.query(connection, current_table, condition="date = '{}'".format(data.to_datetime(row[0])))) == 0:
+                                    do_insert = True
+                            c = db.query(connection,data.state_metadata,fieldset="percent_0to9",condition="FIPS = "+row[2])
+                            if len(c) == 0 or c[0][0] == None:
+                                popdata = func_timeout(min_wait_time+10*current_tries,data.pull_population_data,args=[int(row[2])],kwargs={"log":log})
+                                for index, rowc in popdata.iterrows():
+                                    db.update(connection,data.county_metadata,fieldset=
+                                              ["population",'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
+                                              'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus'],
+                                              valueset=[rowc["population_size"], rowc['percent_0to9'], rowc['percent_10to19'], rowc['percent_20to29'],
+                                              rowc['percent_30to39'] ,rowc['percent_40to49'], rowc['percent_50to59'], rowc['percent_60to69'],
+                                              rowc['percent_70to79'], rowc['percent_80plus']])
+                            if do_insert:
+                                db.insert(connection,current_table,[data.to_datetime(row[0]),int(row[3]),int(row[4])],formatt=["date","total_cases","total_deaths"])
+                                if commit_every_insert:
+                                    last_committed_date = row[0]
+                                    db.update(connection, data.misc_data, "value", str(last_committed_date), condition="var = 'last_committed_state_date'")
+                                    db.commit(connection)
+                            #print("looped")
+                else:
+                    if log:
+                        print(logtab+"[ConnectionError] retrying...")
+                    time.sleep(5)
+                    current_tries+=1
+            except Exception as eee:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                if log:
+                    print(logtab,str(eee))
+                    traceback.print_tb(exc_traceback, limit=1, file=sys.stdout)
+                    print("retrying...")
+                time.sleep(5)
+                current_tries+=1
+            except FunctionTimedOut as fto:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                if log:
+                    print(logtab,str(fto))
+                    traceback.print_tb(exc_traceback, limit=1, file=sys.stdout)
+                    print("retrying...")
+                time.sleep(5)
+                current_tries+=1
+
+        if finish:
+            last_committed_date = last_updated_date
+            db.update(connection, data.misc_data, "value", str(last_committed_state_date), condition="var = 'last_committed_date'")
+            db.commit(connection)
+            connection.close()
+        else:
+            raise Warning("Connection to SQL Server lost.")
+
+        return last_committed_date
 
     def get_county_data(fips, date="*"): # -> {str : (int, int) } # fun fact: if data exists for county on certain day, it is still uploaded to api, even if data is the exact same as the prior day's data. as such there are no skipped days. keep in mind when calcing new cases
         connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass, data.db_name)
@@ -453,6 +622,5 @@ if __name__ == "__main__":
     #connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass, data.db_name)
     #fips = data.fips_from_text("Contra Costa, California")
     #data.plot(fips,show=True,scale="log")
-
-    print(data.update(log=True,end_on_data_skip=True,highlight_errors=True,update_state=True)) #update_past_date="2020-04-20",
+    data.update(log=True,end_on_data_skip=True,highlight_errors=True,update_state_in_county_update=True)
     #data.update_all_population_data()

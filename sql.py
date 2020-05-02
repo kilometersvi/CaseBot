@@ -107,19 +107,36 @@ class db:
             print("UploadError")
         #except _mysql_connector.MySQLInterfaceError as e:
         #    print("UploadError2")
-
+    '''
     def update_multiple(connection, table, fieldset, valueset, condition=None):
         if(len(valueset) != len(fieldset)):
             raise SyntaxError("[IMPLEMENTERROR] incongruent fieldset & valueset")
         else:
             for i in range(0,len(fieldset)):
                 db.update(connection,table,fieldset[i],valueset[i],condition)
-
-    def update(connection, table, field, value, condition=None):
-        dobrack = ""
-        if isinstance(value,str):
-            dobrack = "'"
-        cmd = "UPDATE "+table+" SET "+field+" = "+dobrack+str(value)+dobrack+" "+db.where_gen(condition)
+    '''
+    def update(connection, table, fieldset, valueset, condition=None):
+        fs = []
+        vs = []
+        if isinstance(fieldset, list):
+            if(len(valueset) != len(fieldset)):
+                raise SyntaxError("[IMPLEMENTERROR] incongruent fieldset & valueset")
+            else:
+                fs = fieldset
+                vs = valueset
+        else:
+            fs.append(fieldset)
+            vs.append(valueset)
+        cmd = "UPDATE "+table+" SET "
+        setstr = ""
+        for i in range(0,len(fs)):
+            value = vs[i]
+            field = fs[i]
+            dobrack = ""
+            if isinstance(value,str):
+                dobrack = "'"
+            setstr += field+" = "+dobrack+str(value)+dobrack+", "
+        cmd += setstr[:-2] + " " + db.where_gen(condition)
         db.run(connection, cmd)
 
     def query(connection, table, fieldset="*", condition=None):
