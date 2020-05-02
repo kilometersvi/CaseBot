@@ -39,22 +39,22 @@ class data:
         data.create_meta_tables(connection)
         connection.close()
 
-    def create_meta_tables(connection):
+    def create_meta_tables(connection,log=False):
         if not db.if_table_exists(connection, data.county_metadata):
             if log:
-                print(logtab,"[NEWDATA] county metadata table does not exist, creating")
+                print("[NEWDATA] county metadata table does not exist, creating")
             db.run(connection, "create table `{}` (FIPS INT, county VARCHAR(36), state VARCHAR(24), population INT, percent_0to9 FLOAT, percent_10to19 FLOAT, percent_20to29 FLOAT, percent_30to39 FLOAT, percent_40to49 FLOAT, percent_50to59 FLOAT, percent_60to69 FLOAT, percent_70to79 FLOAT, percent_80plus FLOAT)".format(data.county_metadata))
             db.commit(connection)
 
         if not db.if_table_exists(connection, data.state_metadata):
             if log:
-                print(logtab,"[NEWDATA] state metadata table does not exist, creating")
+                print("[NEWDATA] state metadata table does not exist, creating")
             db.run(connection, "create table `{}` (state VARCHAR(36), FIPS MEDIUMINT(9), population INT, percent_0to9 FLOAT, percent_10to19 FLOAT, percent_20to29 FLOAT, percent_30to39 FLOAT, percent_40to49 FLOAT, percent_50to59 FLOAT, percent_60to69 FLOAT, percent_70to79 FLOAT, percent_80plus FLOAT)".format(data.state_metadata))
             db.commit(connection)
 
         if not db.if_table_exists(connection, data.misc_data):
             if log:
-                print(logtab,"[NEWDATA] misc data table does not exist, creating")
+                print("[NEWDATA] misc data table does not exist, creating")
             db.run(connection, "create table `{}` (i INT AUTO_INCREMENT NOT NULL, var VARCHAR(36) NOT NULL, value VARCHAR(64), primary key (i) )".format(data.misc_data))
             db.insert(connection,data.misc_data,["last_committed_date","2020-01-20"],["var", "value"])
             db.insert(connection,data.misc_data,["last_committed_state_date","2020-01-20"],["var", "value"])
@@ -150,7 +150,7 @@ class data:
                         logtab="\t"
                     current_tries = 0
 
-                    data.create_meta_tables(connection)
+                    data.create_meta_tables(connection,log)
 
                     last_committed_date = db.query(connection, data.misc_data, "value", "var = 'last_committed_date'")[0][0]
                     last_updated_date = last_committed_date
@@ -478,7 +478,7 @@ class data:
                         logtab="\t"
                     current_tries = 0
 
-                    data.create_meta_tables(connection)
+                    data.create_meta_tables(connection,log)
 
                     last_committed_date = db.query(connection, data.misc_data, "value", "var = 'last_committed_state_date'")[0][0]
                     last_updated_date = last_committed_date
@@ -547,7 +547,7 @@ class data:
                                 if len(db.query(connection, current_table, condition="date = '{}'".format(data.to_datetime(row[0])))) == 0:
                                     do_insert = True
                             c = db.query(connection,data.state_metadata,fieldset="percent_0to9",condition="FIPS = "+row[2])
-                            if (len(c) == 0 or c[0][0] == None) and (int(row[2]) <= 56 || int(row[2] == 72)):
+                            if (len(c) == 0 or c[0][0] == None) and (int(row[2]) <= 56 or int(row[2] == 72)):
                                 popdata = func_timeout(min_wait_time+10*current_tries,data.pull_population_data,args=[int(row[2])],kwargs={"log":log})
                                 if not popdata.empty:
                                     for index, rowc in popdata.iterrows():
