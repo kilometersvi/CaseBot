@@ -32,6 +32,7 @@ class data:
 
     #unknown counties have table 'ID'+state_fips+'999'
 
+    #init functions
     def init_db():
         connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass)
         db.run(connection, "CREATE DATABASE covidbot")
@@ -60,6 +61,7 @@ class data:
             db.commit(connection)
             #last_committed_date = "2020-01-20"
 
+    #helper functions
     def to_datetime(d): #d = string YYYY-MM-DD
         year = d[:4]
         month = d[5:7]
@@ -119,7 +121,8 @@ class data:
         else:
             return ("All Counties", location)
 
-    def update(retries=5,log=False,end_on_data_skip=False,highlight_errors=False,update_state_in_county_update=True,min_wait_time = 20,min_deaths_to_county_pop_pull=50):
+    #update functions
+    def update_all(retries=5,log=False,end_on_data_skip=False,highlight_errors=False,update_state_in_county_update=True,min_wait_time = 20,min_deaths_to_county_pop_pull=50):
         data.update_county_data(retries=retries,log=log,end_on_data_skip=end_on_data_skip,highlight_errors=highlight_errors,update_state=update_state_in_county_update,min_wait_time=min_wait_time,min_deaths_to_county_pop_pull=min_deaths_to_county_pop_pull)
 
         data.update_all_population_data(log=log,onlyTotal=True)
@@ -176,15 +179,19 @@ class data:
                                         print(logtab,'[NEWDATA] new state detected, adding to table')
                                     state_fips = row[3][:2]
                                     popdata = func_timeout(min_wait_time+10*current_tries,data.pull_population_data,args=[state_fips],kwargs={"log":log})
-                                    for index, rowc in popdata.iterrows():
-                                        #fips = int(""+index.params()[0][1]+index.params()[1][1])
-                                        db.insert(connection,data.state_metadata,
-                                              [row[2], int(state_fips), rowc["population_size"], rowc['percent_0to9'], rowc['percent_10to19'], rowc['percent_20to29'],
-                                               rowc['percent_30to39'] ,rowc['percent_40to49'], rowc['percent_50to59'], rowc['percent_60to69'],
-                                               rowc['percent_70to79'], rowc['percent_80plus']],
-                                              ["state","FIPS","population",'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
-                                              'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus'])
-                                        break
+                                    if popdata.empty:
+                                        for index, rowc in popdata.iterrows():
+                                            #fips = int(""+index.params()[0][1]+index.params()[1][1])
+                                            db.insert(connection,data.state_metadata,
+                                                  [row[2], int(state_fips), rowc["population_size"], rowc['percent_0to9'], rowc['percent_10to19'], rowc['percent_20to29'],
+                                                   rowc['percent_30to39'] ,rowc['percent_40to49'], rowc['percent_50to59'], rowc['percent_60to69'],
+                                                   rowc['percent_70to79'], rowc['percent_80plus']],
+                                                  ["state","FIPS","population",'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
+                                                  'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus'])
+                                            break
+                                    else:
+                                        db.insert(connection,data.state_metadata,[row[2], int(state_fips)],["state","FIPS"])
+
                                     last_committed_date = row[0]
                                     db.update(connection, data.misc_data, "value", str(last_committed_date), condition="var = 'last_committed_date'")
                                     db.commit(connection)
@@ -274,13 +281,14 @@ class data:
                                     do_insert = True
                             if is_real_fips and min_deaths_to_county_pop_pull <= int(row[5]):
                                 popdata = func_timeout(min_wait_time+10*current_tries,data.pull_population_data,args=[int(row[3])],kwargs={"log":log})
-                                for index, rowc in popdata.iterrows():
-                                    db.update(connection,data.county_metadata,fieldset=
-                                              ["population",'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
-                                              'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus'],
-                                              valueset=[rowc["population_size"], rowc['percent_0to9'], rowc['percent_10to19'], rowc['percent_20to29'],
-                                              rowc['percent_30to39'] ,rowc['percent_40to49'], rowc['percent_50to59'], rowc['percent_60to69'],
-                                              rowc['percent_70to79'], rowc['percent_80plus']])
+                                if popdata.empty:
+                                    for index, rowc in popdata.iterrows():
+                                        db.update(connection,data.county_metadata,fieldset=
+                                                  ["population",'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
+                                                  'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus'],
+                                                  valueset=[rowc["population_size"], rowc['percent_0to9'], rowc['percent_10to19'], rowc['percent_20to29'],
+                                                  rowc['percent_30to39'] ,rowc['percent_40to49'], rowc['percent_50to59'], rowc['percent_60to69'],
+                                                  rowc['percent_70to79'], rowc['percent_80plus']])
                             if do_insert:
                                 db.insert(connection,current_table,[data.to_datetime(row[0]),int(row[4]),int(row[5])],formatt=["date","total_cases","total_deaths"])
                                 if commit_every_insert:
@@ -353,7 +361,7 @@ class data:
                 if county == '999':
                     if log:
                         print('\t[POPDATA_ERRORCATCH] cant get pop data for unknown')
-                        return None
+                        return pd.DataFrame(columns = [""])
                 if log:
                     print(f'\t[POPDATA] {fips} detected as county, state set to {state} and county to {county}')
 
@@ -497,18 +505,21 @@ class data:
                             if len(c) == 0:
                                 if log:
                                     print(logtab,f'[NEWDATA] new state {row[2]} detected, adding to table')
-                                #db.insert(connection,data.state_metadata,[row[1],int(row[2])],["state","FIPS"])
 
                                 popdata = func_timeout(min_wait_time+10*current_tries,data.pull_population_data,args=[int(row[2])],kwargs={"log":log})
-                                for index, rowc in popdata.iterrows():
-                                    #fips = int(""+index.params()[0][1]+index.params()[1][1])
-                                    db.insert(connection,data.state_metadata,
-                                              [row[1],int(row[2]),rowc["population_size"], rowc['percent_0to9'], rowc['percent_10to19'], rowc['percent_20to29'],
-                                               rowc['percent_30to39'] ,rowc['percent_40to49'], rowc['percent_50to59'], rowc['percent_60to69'],
-                                               rowc['percent_70to79'], rowc['percent_80plus']],
-                                              ["state","FIPS","population",'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
-                                              'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus'])
-                                    break
+                                if popdata.empty:
+                                    for index, rowc in popdata.iterrows():
+                                        #fips = int(""+index.params()[0][1]+index.params()[1][1])
+                                        db.insert(connection,data.state_metadata,
+                                                  [row[1],int(row[2]),rowc["population_size"], rowc['percent_0to9'], rowc['percent_10to19'], rowc['percent_20to29'],
+                                                   rowc['percent_30to39'] ,rowc['percent_40to49'], rowc['percent_50to59'], rowc['percent_60to69'],
+                                                   rowc['percent_70to79'], rowc['percent_80plus']],
+                                                  ["state","FIPS","population",'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
+                                                  'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus'])
+                                        break
+                                else:
+                                    db.insert(connection,data.state_metadata,[row[1],int(row[2])],["state","FIPS"])
+
                                 if commit_every_insert:
                                     last_committed_date = row[0]
                                     db.update(connection, data.misc_data, "value", str(last_committed_date), condition="var = 'last_committed_state_date'")
@@ -532,13 +543,15 @@ class data:
                             c = db.query(connection,data.state_metadata,fieldset="percent_0to9",condition="FIPS = "+row[2])
                             if len(c) == 0 or c[0][0] == None:
                                 popdata = func_timeout(min_wait_time+10*current_tries,data.pull_population_data,args=[int(row[2])],kwargs={"log":log})
-                                for index, rowc in popdata.iterrows():
-                                    db.update(connection,data.county_metadata,fieldset=
-                                              ["population",'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
-                                              'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus'],
-                                              valueset=[rowc["population_size"], rowc['percent_0to9'], rowc['percent_10to19'], rowc['percent_20to29'],
-                                              rowc['percent_30to39'] ,rowc['percent_40to49'], rowc['percent_50to59'], rowc['percent_60to69'],
-                                              rowc['percent_70to79'], rowc['percent_80plus']])
+                                if popdata.empty:
+                                    for index, rowc in popdata.iterrows():
+                                        db.update(connection,data.county_metadata,fieldset=
+                                                  ["population",'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
+                                                  'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus'],
+                                                  valueset=[rowc["population_size"], rowc['percent_0to9'], rowc['percent_10to19'], rowc['percent_20to29'],
+                                                  rowc['percent_30to39'] ,rowc['percent_40to49'], rowc['percent_50to59'], rowc['percent_60to69'],
+                                                  rowc['percent_70to79'], rowc['percent_80plus']])
+                                        break
                             if do_insert:
                                 db.insert(connection,current_table,[data.to_datetime(row[0]),int(row[3]),int(row[4])],formatt=["date","total_cases","total_deaths"])
                                 if commit_every_insert:
@@ -578,6 +591,7 @@ class data:
 
         return last_committed_date
 
+    #accessors
     def get_county_data(fips, date="*"): # -> {str : (int, int) } # fun fact: if data exists for county on certain day, it is still uploaded to api, even if data is the exact same as the prior day's data. as such there are no skipped days. keep in mind when calcing new cases
         connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass, data.db_name)
         table = "ID"+str(fips)
@@ -590,37 +604,8 @@ class data:
             dataclean[str(dr[0])] = (dr[1],dr[2])
         return dataclean
 
-    def plot(fips, filename="generate",show=False,scale="log"): #scale = log, linear. include .png in filename
-        #todo: enter fips as list of sets of (fips, bool numCases, bool numDeaths) for printing comparison graphs
-        text = data.text_from_fips(fips)
-        if filename == "generate":
-            County, State = data.c_s_from_text(text)
-            filename = "plot-"+County+"-"+State+".png"
-        table = "ID"+str(fips)
-        connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass, data.db_name)
-        dates = db.query(connection,table,"date")
-        total_cases = db.query(connection,table,"total_cases")
-        total_deaths = db.query(connection,table,"total_deaths")
-
-        fig, ax = plt.subplots()
-        ax.plot(dates,total_cases,color='blue',label='Cases')
-        ax.plot(dates,total_deaths,color='red',label='Deaths')
-        plt.legend()
-        plt.xticks(rotation=25)
-        plt.yscale(scale)
-        ax.set(xlabel='Date Reported', ylabel='Num',title='COVID-19 Effect in {}'.format(text))
-        ax.grid()
-        fig.savefig(filename)
-        if show:
-            plt.show()
-        connection.close()
-        return True
-
 if __name__ == "__main__":
 
     db.log = False
-    #connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass, data.db_name)
-    #fips = data.fips_from_text("Contra Costa, California")
-    #data.plot(fips,show=True,scale="log")
-    data.update(log=True,end_on_data_skip=True,highlight_errors=True,update_state_in_county_update=True)
-    #data.update_all_population_data()
+
+    data.update_all(log=True,end_on_data_skip=True,highlight_errors=True,update_state_in_county_update=True)
