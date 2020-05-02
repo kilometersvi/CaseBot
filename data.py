@@ -607,5 +607,5 @@ class data:
 if __name__ == "__main__":
 
     db.log = False
-
+    #data.init_db()
     data.update_all(log=True,end_on_data_skip=True,highlight_errors=True,update_state_in_county_update=True)
