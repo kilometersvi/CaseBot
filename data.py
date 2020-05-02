@@ -122,8 +122,8 @@ class data:
             return ("All Counties", location)
 
     #update functions
-    def update_all(retries=5,log=False,end_on_data_skip=False,highlight_errors=False,update_state_in_county_update=True,min_wait_time = 20,min_deaths_to_county_pop_pull=50):
-        data.update_county_data(retries=retries,log=log,end_on_data_skip=end_on_data_skip,highlight_errors=highlight_errors,update_state=update_state_in_county_update,min_wait_time=min_wait_time,min_deaths_to_county_pop_pull=min_deaths_to_county_pop_pull)
+    def update_all(retries=5,log=False,commit_every_insert=False,end_on_data_skip=False,highlight_errors=False,update_state_in_county_update=True,min_wait_time = 20,min_deaths_to_county_pop_pull=50):
+        data.update_county_data(retries=retries,log=log,commit_every_insert=commit_every_insert,end_on_data_skip=end_on_data_skip,highlight_errors=highlight_errors,update_state=update_state_in_county_update,min_wait_time=min_wait_time,min_deaths_to_county_pop_pull=min_deaths_to_county_pop_pull)
 
         data.update_all_population_data(log=log,onlyTotal=True)
 
@@ -291,6 +291,8 @@ class data:
                                                       valueset=[rowc["population_size"], rowc['percent_0to9'], rowc['percent_10to19'], rowc['percent_20to29'],
                                                       rowc['percent_30to39'] ,rowc['percent_40to49'], rowc['percent_50to59'], rowc['percent_60to69'],
                                                       rowc['percent_70to79'], rowc['percent_80plus']])
+                                    elif log:
+                                        print(logtab,"[POPDATA] dont need to fetch pop data, already updated")
                             if do_insert:
                                 db.insert(connection,current_table,[data.to_datetime(row[0]),int(row[4]),int(row[5])],formatt=["date","total_cases","total_deaths"])
                                 if commit_every_insert:
@@ -423,7 +425,7 @@ class data:
         #county65plus.sort_values('percent_65plus', ascending=False, inplace=True)
         #county65plus.head(30)
         '''
-        popdata = pull_population_data('*',log=log,onlyTotal=onlyTotal)
+        popdata = data.pull_population_data('*',log=log,onlyTotal=onlyTotal)
 
         connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass, data.db_name)
 
