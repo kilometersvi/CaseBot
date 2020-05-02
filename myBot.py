@@ -1,4 +1,4 @@
-from userBase import userBase
+from userbase import userbase
 from data import data
 from datetime import date
 import tweepy
@@ -59,10 +59,7 @@ def string_to_send(fips):
     new_deaths = information[today][1] - yesterday_info[yesterday][1]
     if new_deaths < 0:
         new_deaths = 0
-    info_string = "Total Number of Cases: " + total_cases + "\n" +
-                     "Total Number of Deaths: " + total_deaths + "\n" +
-                     "New Cases Today: " + new_cases + "\n" +
-                     "New Deaths Today: " + new_deaths
+    info_string = "Total Number of Cases: " + total_cases + "\n" + "Total Number of Deaths: " + total_deaths + "\n" + "New Cases Today: " + new_cases + "\n" +"New Deaths Today: " + new_deaths
     return info_string
 
 
@@ -74,14 +71,15 @@ def send_direct_messages():
         information = string_to_send(fips)
         api.send_direct_message(id, information)
 
+#returns if need to send to dm right away
 def add_dictionary(id, message):
     fips = userBase.fips_from_text(message)
     if id not in allMembers:
         allMembers[id] = fips
     if not userbase.if_user_exists(id):
         userbase.new_user(id, location=fips)
-        return true
-    return false
+        return True
+    return False
 
 #gets all recieved dms text
 def get_all_received():
@@ -98,6 +96,7 @@ def get_all_received():
                 api.send_direct_message(id, information)
 
 if __name__ == '__main__':
+    reply_to_tweets()
     get_all_received()
     send_direct_messages()
     #need to only run this everyday
