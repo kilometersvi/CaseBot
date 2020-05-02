@@ -179,7 +179,7 @@ class data:
                                         print(logtab,'[NEWDATA] new state detected, adding to table')
                                     state_fips = row[3][:2]
                                     popdata = func_timeout(min_wait_time+10*current_tries,data.pull_population_data,args=[state_fips],kwargs={"log":log})
-                                    if popdata.empty:
+                                    if not popdata.empty:
                                         for index, rowc in popdata.iterrows():
                                             #fips = int(""+index.params()[0][1]+index.params()[1][1])
                                             db.insert(connection,data.state_metadata,
@@ -280,15 +280,17 @@ class data:
                                 if len(db.query(connection, current_table, condition="date = '{}'".format(data.to_datetime(row[0])))) == 0:
                                     do_insert = True
                             if is_real_fips and min_deaths_to_county_pop_pull <= int(row[5]):
-                                popdata = func_timeout(min_wait_time+10*current_tries,data.pull_population_data,args=[int(row[3])],kwargs={"log":log})
-                                if popdata.empty:
-                                    for index, rowc in popdata.iterrows():
-                                        db.update(connection,data.county_metadata,fieldset=
-                                                  ["population",'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
-                                                  'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus'],
-                                                  valueset=[rowc["population_size"], rowc['percent_0to9'], rowc['percent_10to19'], rowc['percent_20to29'],
-                                                  rowc['percent_30to39'] ,rowc['percent_40to49'], rowc['percent_50to59'], rowc['percent_60to69'],
-                                                  rowc['percent_70to79'], rowc['percent_80plus']])
+                                ccc = db.query(connection,data.county_metadata,fieldset="percent_0to9",condition="FIPS = {}".format(int(row[3])))
+                                if len(ccc) == 0 or ccc[0][0] == None:
+                                    popdata = func_timeout(min_wait_time+10*current_tries,data.pull_population_data,args=[int(row[3])],kwargs={"log":log})
+                                    if not popdata.empty:
+                                        for index, rowc in popdata.iterrows():
+                                            db.update(connection,data.county_metadata,fieldset=
+                                                      ["population",'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
+                                                      'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus'],
+                                                      valueset=[rowc["population_size"], rowc['percent_0to9'], rowc['percent_10to19'], rowc['percent_20to29'],
+                                                      rowc['percent_30to39'] ,rowc['percent_40to49'], rowc['percent_50to59'], rowc['percent_60to69'],
+                                                      rowc['percent_70to79'], rowc['percent_80plus']])
                             if do_insert:
                                 db.insert(connection,current_table,[data.to_datetime(row[0]),int(row[4]),int(row[5])],formatt=["date","total_cases","total_deaths"])
                                 if commit_every_insert:
@@ -502,12 +504,12 @@ class data:
                                 row[i] = row[i].replace("'","\\'")
 
                             c = db.query(connection,data.state_metadata,fieldset="FIPS",condition="FIPS = "+row[2])
-                            if len(c) == 0:
+                            if len(c) == 0 or c[0][0] == None:
                                 if log:
                                     print(logtab,f'[NEWDATA] new state {row[2]} detected, adding to table')
 
                                 popdata = func_timeout(min_wait_time+10*current_tries,data.pull_population_data,args=[int(row[2])],kwargs={"log":log})
-                                if popdata.empty:
+                                if not popdata.empty:
                                     for index, rowc in popdata.iterrows():
                                         #fips = int(""+index.params()[0][1]+index.params()[1][1])
                                         db.insert(connection,data.state_metadata,
@@ -543,7 +545,7 @@ class data:
                             c = db.query(connection,data.state_metadata,fieldset="percent_0to9",condition="FIPS = "+row[2])
                             if len(c) == 0 or c[0][0] == None:
                                 popdata = func_timeout(min_wait_time+10*current_tries,data.pull_population_data,args=[int(row[2])],kwargs={"log":log})
-                                if popdata.empty:
+                                if not popdata.empty:
                                     for index, rowc in popdata.iterrows():
                                         db.update(connection,data.county_metadata,fieldset=
                                                   ["population",'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
