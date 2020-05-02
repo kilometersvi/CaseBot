@@ -132,7 +132,7 @@ class data:
 
         if log:
             print("Data updated.")
-        
+
     def update_county_data(retries=5,commit_every_insert=False,log=False,end_on_data_skip=False,highlight_errors=False,update_state=True,min_wait_time = 20,min_deaths_to_county_pop_pull=50): # if mdtcpp = -1, dont pull county pop data
 
         last_updated_date = None
@@ -334,6 +334,8 @@ class data:
             db.update(connection, data.misc_data, "value", str(last_committed_date), condition="var = 'last_committed_date'")
             db.commit(connection)
             connection.close()
+            if log:
+                print("finished.")
         else:
             raise Warning("Connection to SQL Server lost.")
 
@@ -594,9 +596,11 @@ class data:
 
         if finish:
             last_committed_date = last_updated_date
-            db.update(connection, data.misc_data, "value", str(last_committed_state_date), condition="var = 'last_committed_date'")
+            db.update(connection, data.misc_data, "value", str(last_committed_date), condition="var = 'last_committed_date'")
             db.commit(connection)
             connection.close()
+            if log:
+                print("finished.")
         else:
             raise Warning("Connection to SQL Server lost.")
 
