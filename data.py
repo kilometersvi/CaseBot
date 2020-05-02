@@ -125,11 +125,14 @@ class data:
     def update_all(retries=5,log=False,commit_every_insert=False,end_on_data_skip=False,highlight_errors=False,update_state_in_county_update=True,min_wait_time = 20,min_deaths_to_county_pop_pull=50):
         was_new_county_found = data.update_county_data(retries=retries,log=log,commit_every_insert=commit_every_insert,end_on_data_skip=end_on_data_skip,highlight_errors=highlight_errors,update_state=update_state_in_county_update,min_wait_time=min_wait_time,min_deaths_to_county_pop_pull=min_deaths_to_county_pop_pull)
 
-        if(was_new_county_found):
+        if was_new_county_found:
             data.update_all_population_data(log=log,onlyTotal=True)
 
         data.update_state_data(retries=retries,log=log,commit_every_insert=commit_every_insert,highlight_errors=highlight_errors,min_wait_time=min_wait_time)
 
+        if log:
+            print("Data updated.")
+        
     def update_county_data(retries=5,commit_every_insert=False,log=False,end_on_data_skip=False,highlight_errors=False,update_state=True,min_wait_time = 20,min_deaths_to_county_pop_pull=50): # if mdtcpp = -1, dont pull county pop data
 
         last_updated_date = None
@@ -566,6 +569,7 @@ class data:
                                     db.update(connection, data.misc_data, "value", str(last_committed_date), condition="var = 'last_committed_state_date'")
                                     db.commit(connection)
                             #print("looped")
+                    finish = True
                 else:
                     if log:
                         print(logtab+"[ConnectionError] retrying...")
