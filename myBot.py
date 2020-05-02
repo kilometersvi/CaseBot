@@ -1,4 +1,6 @@
 from userBase import userBase
+from data import data
+from datetime import date
 import tweepy
 
 consumer_key="5xSjIE64dtFQwM29rqcOAysxK"
@@ -40,22 +42,46 @@ def reply_to_tweets():
         last_seen_id = mention.id
         store_last_seen_id(last_seen_id, FILE_NAME)
         #respond to the file using userbase
-        information = userbase.fips_from_text(mention.full_text.lower())
+        fips = userbase.fips_from_text(mention.full_text.lower())
+        information = string_to_send(fips)
         api.update_status('@' + mention.user.screen_name + ' ' + information, mention.id)
+
+def string_to_send(fips):
+    today = date.today()
+    yesterday = today - timedelta(days = 1)
+    information = data.get_county_data(fips, today)
+    yesterday_info = data.get_county_data(fips, yesterday)
+    total_cases = information[today][0]
+    total_deaths = information[today][1]
+    new_cases = information[today][0] - yesterday_info[yesterday][0]
+    if new_cases < 0:
+        new_cases = 0
+    new_deaths = information[today][1] - yesterday_info[yesterday][1]
+    if new_deaths < 0:
+        new_deaths = 0
+    info_string = "Total Number of Cases: " + total_cases + "\n" +
+                     "Total Number of Deaths: " + total_deaths + "\n" +
+                     "New Cases Today: " + new_cases + "\n" +
+                     "New Deaths Today: " + new_deaths
+    return info_string
+
 
 #send dm to all followers
 def send_direct_messages():
     #subscriberList = api.followers_ids(1249410623160475649)
     for id in allMembers:
-        message = allMembers[id]
-        api.send_direct_message(id, userbase.fips_from_text(message))
+        fips = allMembers[id]
+        information = string_to_send(fips)
+        api.send_direct_message(id, information)
 
 def add_dictionary(id, message):
+    fips = userBase.fips_from_text(message)
     if id not in allMembers:
-        allMembers[id] = message
+        allMembers[id] = fips
     if not userbase.if_user_exists(id):
-        userbase.new_user(id, location=message)
-    return allMembers
+        userbase.new_user(id, location=fips)
+        return true
+    return false
 
 #gets all recieved dms text
 def get_all_received():
@@ -65,8 +91,11 @@ def get_all_received():
         if words.message_create.get(u'sender_id') != '1249410623160475649':
             text = words.message_create.get(u'message_data').get(u'text')
             id = words.message_create.get(u'sender_id')
-            add_dictionary(id, text)
-            api.send_direct_message(id, userbase.fips_from_text(text))
+            in_bool = add_dictionary(id, text)
+            if in_bool:
+                fips = userbase.fips_from_text(text)
+                information = string_to_send(fips)
+                api.send_direct_message(id, information)
 
 if __name__ == '__main__':
     get_all_received()
