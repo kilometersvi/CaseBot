@@ -138,6 +138,7 @@ class data:
         finish = False
         prev_date = "2020-01-20"
         connection = None
+        was_new_county_found = False
 
         while(current_tries<retries and not finish):
             try:
@@ -243,6 +244,7 @@ class data:
                             #print('\tcounty: ',row[3])
                             c = db.query(connection,data.county_metadata,fieldset="FIPS",condition="FIPS = "+row[3])
                             if len(c) == 0:
+                                was_new_county_found = True
                                 if log:
                                     print(logtab,f'[NEWDATA] new county {row[3]} detected, adding to table (real FIPS code: {is_real_fips})')
                                 db.insert(connection,data.county_metadata,[int(row[3]),row[1],row[2]],["FIPS","county","state"])
@@ -290,7 +292,7 @@ class data:
                                                       'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus'],
                                                       valueset=[rowc["population_size"], rowc['percent_0to9'], rowc['percent_10to19'], rowc['percent_20to29'],
                                                       rowc['percent_30to39'] ,rowc['percent_40to49'], rowc['percent_50to59'], rowc['percent_60to69'],
-                                                      rowc['percent_70to79'], rowc['percent_80plus']])
+                                                      rowc['percent_70to79'], rowc['percent_80plus']],condition="FIPS = {}".format(row[3]))
                                     elif log:
                                         print(logtab,"[POPDATA] dont need to fetch pop data, already updated")
                             if do_insert:
@@ -506,7 +508,7 @@ class data:
                                 row[i] = row[i].replace("'","\\'")
 
                             c = db.query(connection,data.state_metadata,fieldset="FIPS",condition="FIPS = "+row[2])
-                            if len(c) == 0 or c[0][0] == None:
+                            if (len(c) == 0 or c[0][0] == None) and (int(row[2]) <= 56):
                                 if log:
                                     print(logtab,f'[NEWDATA] new state {row[2]} detected, adding to table')
 
@@ -545,16 +547,16 @@ class data:
                                 if len(db.query(connection, current_table, condition="date = '{}'".format(data.to_datetime(row[0])))) == 0:
                                     do_insert = True
                             c = db.query(connection,data.state_metadata,fieldset="percent_0to9",condition="FIPS = "+row[2])
-                            if len(c) == 0 or c[0][0] == None:
+                            if (len(c) == 0 or c[0][0] == None) and (int(row[2]) <= 56 || int(row[2] == 72)):
                                 popdata = func_timeout(min_wait_time+10*current_tries,data.pull_population_data,args=[int(row[2])],kwargs={"log":log})
                                 if not popdata.empty:
                                     for index, rowc in popdata.iterrows():
-                                        db.update(connection,data.county_metadata,fieldset=
+                                        db.update(connection,data.state_metadata,fieldset=
                                                   ["population",'percent_0to9', 'percent_10to19', 'percent_20to29', 'percent_30to39',
                                                   'percent_40to49', 'percent_50to59', 'percent_60to69', 'percent_70to79', 'percent_80plus'],
                                                   valueset=[rowc["population_size"], rowc['percent_0to9'], rowc['percent_10to19'], rowc['percent_20to29'],
                                                   rowc['percent_30to39'] ,rowc['percent_40to49'], rowc['percent_50to59'], rowc['percent_60to69'],
-                                                  rowc['percent_70to79'], rowc['percent_80plus']])
+                                                  rowc['percent_70to79'], rowc['percent_80plus']],condition="FIPS = {}".format(row[2]))
                                         break
                             if do_insert:
                                 db.insert(connection,current_table,[data.to_datetime(row[0]),int(row[3]),int(row[4])],formatt=["date","total_cases","total_deaths"])
