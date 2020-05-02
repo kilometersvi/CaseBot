@@ -14,7 +14,7 @@ auth.set_access_token(access_token, access_token_secret)
 
 api = tweepy.API(auth)
 
-allMembers = {}
+#allMembers = {}
 
 FILE_NAME = 'lastSeenId.txt'
 #keeps track of the last seen id from all the mentions
@@ -66,16 +66,18 @@ def string_to_send(fips):
 #send dm to all followers
 def send_direct_messages():
     subscriberList = api.followers_ids(1249410623160475649)
-    for id in allMembers:
-        fips = allMembers[id]
-        information = string_to_send(fips)
-        api.send_direct_message(id, information)
+    for sub in subscriberList:
+        if userbase.if_user_exists(sub):
+            #HOW DO I GET FIPS
+            fips =
+            information = string_to_send(fips)
+            api.send_direct_message(id, information)
 
 #returns if need to send to dm right away
 def add_dictionary(id, message):
     fips = userBase.fips_from_text(message)
-    if id not in allMembers:
-        allMembers[id] = fips
+    #if id not in allMembers:
+    #    allMembers[id] = fips
     if not userbase.if_user_exists(id):
         userbase.new_user(id, location=fips)
         return True
@@ -84,11 +86,14 @@ def add_dictionary(id, message):
 #gets all recieved dms text
 def get_all_received():
     messageData = api.list_direct_messages()
-    #print(messageData)
     for words in messageData:
         if words.message_create.get(u'sender_id') != '1249410623160475649':
             text = words.message_create.get(u'message_data').get(u'text')
             id = words.message_create.get(u'sender_id')
+            text = text.lower()
+            if text == "stop":
+                userbase.remove_user(id)
+                break
             in_bool = add_dictionary(id, text)
             if in_bool:
                 fips = userbase.fips_from_text(text)
@@ -98,5 +103,6 @@ def get_all_received():
 if __name__ == '__main__':
     reply_to_tweets()
     get_all_received()
+    #HOW TO RUN THIS EVERY DAY
     #need to only run this everyday
     #send_direct_messages()
