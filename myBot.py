@@ -74,16 +74,19 @@ def string_to_send(fips):
     return info_string
 
 #send dm to all followers
-def send_direct_messages():
+def send_dms():
     messageData = api.list_direct_messages()
+    check_list = []
     for words in messageData:
         if words.message_create.get(u'sender_id') != '1249410623160475649':
             id = words.message_create.get(u'sender_id')
             if userbase.if_user_exists(id):
-                dict = userbase.get(id)
-                fips = dict[location]
-                information = string_to_send(fips)
-                api.send_direct_message(id, information)
+                check_list.append(id)
+                if id not in check_list:
+                    dict = userbase.get(id)
+                    fips = dict[location]
+                    information = string_to_send(fips)
+                    api.send_direct_message(id, information)
 
 #returns if need to send to dm right away
 def add_dictionary(id, message):
@@ -94,7 +97,7 @@ def add_dictionary(id, message):
     return False
 
 #gets all recieved dms text
-def get_all_received():
+def get_all_received_dms():
     messageData = api.list_direct_messages()
     count = retrieve_last_dm()
     inCount = 0
@@ -126,6 +129,5 @@ def get_all_received():
 
 if __name__ == '__main__':
     reply_to_tweets()
-    get_all_received()
-    #need to only run this everyday
-    #send_direct_messages()
+    get_all_received_dms()
+    send_dms()
