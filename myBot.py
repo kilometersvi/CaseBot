@@ -1,6 +1,7 @@
 from userbase import userbase
 from data import data
 from datetime import date
+from datetime import timedelta
 import tweepy
 
 consumer_key="5xSjIE64dtFQwM29rqcOAysxK"
@@ -128,6 +129,7 @@ def get_all_received_dms():
 
 
 if __name__ == '__main__':
+    userbase.create_usertables()
     reply_to_tweets()
     get_all_received_dms()
     send_dms()

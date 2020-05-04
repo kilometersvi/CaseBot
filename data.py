@@ -79,6 +79,7 @@ class data:
             return False
 
     def fips_from_text(location):
+        print(location)
         if data.if_string_is_int(location):
             return int(location)
         connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass, data.db_name)
