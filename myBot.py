@@ -54,7 +54,10 @@ def reply_to_tweets():
         last_seen_id = mention.id
         store_last_seen_id(last_seen_id, FILE_NAME)
         #respond to the file using userbase
-        fips = userbase.fips_from_text(mention.full_text.lower())
+        full_text = mention.full_text.lower()
+        if " county" in full_text:
+            text.replace(" county", '')
+        fips = userbase.fips_from_text(full_text)
         information = string_to_send(fips)
         api.update_status('@' + mention.user.screen_name + ' ' + information, mention.id)
 
@@ -115,10 +118,14 @@ def get_all_received_dms():
                     text.replace("subscribe ", '')
                     add_dictionary(id, text)
                     api.send_direct_message(id, "We will keep you updated, reply 'stop' to quit")
+                    if " county" in text:
+                        text.replace(" county", '')
                     fips = userbase.fips_from_text(text)
                     information = string_to_send(fips)
                     api.send_direct_message(id, information)
                 else:
+                    if " county" in text:
+                        text.replace(" county", '')
                     fips = userbase.fips_from_text(text)
                     information = string_to_send(fips)
                     api.send_direct_message(id, information)
