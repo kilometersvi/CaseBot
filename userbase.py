@@ -31,8 +31,8 @@ class userbase:
         db.commit(connection)
         connection.close()
         connection = db.create_connection(data.sql_addr, userbase.sql_user, userbase.sql_pass, data.db_name)
-        db.run(connection,"Create table "+table_twitter+" (id VARCHAR(64) NOT NULL UNIQUE, location MEDIUMINT DEFAULT 0, update_pref VARCHAR(64) DEFAULT 'daily', min_days_between_msg MEDIUMINT DEFAULT 0, last_date_messaged DATE)")
-        db.run(connection,"Create table "+table_reddit+" (id VARCHAR(64) NOT NULL UNIQUE, location MEDIUMINT DEFAULT 0, update_pref VARCHAR(64) DEFAULT 'daily', min_days_between_msg MEDIUMINT DEFAULT 0, last_date_messaged DATE)")
+        db.run(connection,"Create table if not exists "+userbase.table_twitter+" (id VARCHAR(64) NOT NULL UNIQUE, location MEDIUMINT DEFAULT 0, update_pref VARCHAR(64) DEFAULT 'daily', min_days_between_msg MEDIUMINT DEFAULT 0, last_date_messaged DATE)")
+        db.run(connection,"Create table if not exists "+userbase.table_reddit+" (id VARCHAR(64) NOT NULL UNIQUE, location MEDIUMINT DEFAULT 0, update_pref VARCHAR(64) DEFAULT 'daily', min_days_between_msg MEDIUMINT DEFAULT 0, last_date_messaged DATE)")
         db.commit(connection)
         connection.close()
         if userbase.log:
@@ -84,7 +84,8 @@ class userbase:
     def if_user_exists(id,platform="twitter"):
         connection = db.create_connection(data.sql_addr, userbase.sql_user, userbase.sql_pass, data.db_name)
         r = db.query(connection,userbase.table_from_param(platform),"id",condition=f"id = '{id}'")
-        connnection.close()
+        #connnection.close()
+        db.print_all(r)
         if len(r) > 0:
             return True
         return False
