@@ -122,7 +122,7 @@ class data:
             return ("All Counties", location)
 
     #update functions
-    def update_all(retries=5,log=False,commit_every_insert=False,end_on_data_skip=False,highlight_errors=False,update_state_in_county_update=True,min_wait_time = 20,min_deaths_to_county_pop_pull=50):
+    def update_all(retries=5,log=False,commit_every_insert=False,end_on_data_skip=False,highlight_errors=False,update_state_in_county_update=True,min_wait_time=20,min_deaths_to_county_pop_pull=50):
         was_new_county_found = data.update_county_data(retries=retries,log=log,commit_every_insert=commit_every_insert,end_on_data_skip=end_on_data_skip,highlight_errors=highlight_errors,update_state=update_state_in_county_update,min_wait_time=min_wait_time,min_deaths_to_county_pop_pull=min_deaths_to_county_pop_pull)
 
         if was_new_county_found:
@@ -133,7 +133,7 @@ class data:
         if log:
             print("Data updated.")
 
-    def update_county_data(retries=5,commit_every_insert=False,log=False,end_on_data_skip=False,highlight_errors=False,update_state=True,min_wait_time = 20,min_deaths_to_county_pop_pull=50): # if mdtcpp = -1, dont pull county pop data
+    def update_county_data(retries=5,commit_every_insert=False,log=False,end_on_data_skip=False,highlight_errors=False,update_state=True,min_wait_time=20,min_deaths_to_county_pop_pull=50): # if mdtcpp = -1, dont pull county pop data
 
         last_updated_date = None
         was_data_skipped = False
@@ -622,5 +622,6 @@ class data:
 if __name__ == "__main__":
 
     db.log = False
+
     #data.init_db()
-    data.update_all(log=True,end_on_data_skip=True,highlight_errors=True,update_state_in_county_update=True)
+    #data.update_all(log=True,end_on_data_skip=True,highlight_errors=True,update_state_in_county_update=True)

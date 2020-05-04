@@ -1,9 +1,5 @@
 database:
 
 update plot() to handle multiple fips with params for which attributes to print
-some means of getting new cases by st
-    new column in county id table? or method that gets when needed?
-update_state_data for creating & maintaining states data ie ID36
-update() which runs update_covid, update_population, update_state with awareness for what population date to run past
 
 stats:

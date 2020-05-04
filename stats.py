@@ -1,8 +1,12 @@
 import scipy
 from math import e
 from sql import db
+from data import data
+import matplotlib
+import numpy as np
+import matplotlib.pyplot as plt
 
-class calc:
+class stats:
     #CFR of South Korea
     CFRb = 0.01635
     CFRb_update = "2020-03-28"
@@ -33,7 +37,7 @@ class calc:
         text = data.text_from_fips(fips)
         if filename == "generate":
             County, State = data.c_s_from_text(text)
-            filename = "plot-"+County+"-"+State+".png"
+            filename = "plot-"+County+"-"+State+".png".replace(" ","_")
         table = "ID"+str(fips)
         connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass, data.db_name)
         dates = db.query(connection,table,"date")
@@ -55,6 +59,7 @@ class calc:
         return True
 
 if __name__ == "__main__":
-    calc.VulnerabilityFactor(0)
-    #fips = data.fips_from_text("Contra Costa, California")
-    #data.plot(fips,show=True,scale="log")
+    #calc.VulnerabilityFactor(0)
+
+    fips = data.fips_from_text("Merced, California")
+    stats.plot(fips,show=True,scale="log")
