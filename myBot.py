@@ -1,6 +1,6 @@
 from userbase import userbase
 from data import data
-from datetime import date
+import datetime
 import tweepy
 
 consumer_key="5xSjIE64dtFQwM29rqcOAysxK"
@@ -58,8 +58,8 @@ def reply_to_tweets():
         api.update_status('@' + mention.user.screen_name + ' ' + information, mention.id)
 
 def string_to_send(fips):
-    today = date.today()
-    yesterday = today - timedelta(days = 1)
+    today = datetime.date.today()
+    yesterday = datetime.date.today() - datetime.timedelta(days = 1)
     information = data.get_county_data(fips, today)
     yesterday_info = data.get_county_data(fips, yesterday)
     total_cases = information[today][0]
@@ -107,17 +107,20 @@ def get_all_received_dms():
                 text = words.message_create.get(u'message_data').get(u'text')
                 id = words.message_create.get(u'sender_id')
                 text = text.lower()
-                text = text.lower()
                 if "stop" in text:
                     userbase.remove_user(id)
                 elif "subscribe " in text:
                     text.replace("subscribe ", '')
                     add_dictionary(id, text)
                     api.send_direct_message(id, "We will keep you updated, reply 'stop' to quit")
+                    if " county" in text:
+                        text.replace(" county", '')
                     fips = userbase.fips_from_text(text)
                     information = string_to_send(fips)
                     api.send_direct_message(id, information)
                 else:
+                    if " county" in text:
+                        text.replace(" county", '')
                     fips = userbase.fips_from_text(text)
                     information = string_to_send(fips)
                     api.send_direct_message(id, information)
