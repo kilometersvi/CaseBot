@@ -85,6 +85,9 @@ class data:
         connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass, data.db_name)
         if ", " in location:
             county,state = location.split(", ")
+            #county.replace(" county","")
+            #county.replace(" County","")
+
             FIPS = db.query(connection,data.county_metadata,"FIPS",["county = '{}'".format(county),"state = '{}'".format(state)])[0][0]
             connection.close()
             return FIPS
@@ -608,7 +611,7 @@ class data:
         return last_committed_date
 
     #accessors
-    def get_county_data(fips, date="*"): # -> {str : (int, int) } # fun fact: if data exists for county on certain day, it is still uploaded to api, even if data is the exact same as the prior day's data. as such there are no skipped days. keep in mind when calcing new cases
+    def get_county_data(fips,doprint=False,date="*"): # -> {str : (int, int) } # fun fact: if data exists for county on certain day, it is still uploaded to api, even if data is the exact same as the prior day's data. as such there are no skipped days. keep in mind when calcing new cases
         connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass, data.db_name)
         table = "ID"+str(fips)
         if date == "*":
@@ -617,12 +620,56 @@ class data:
             dataraw = db.query(connection,table,"*",condition="date = '{}'".format(date))
         dataclean = {}
         for dr in dataraw:
+            if doprint:
+                print(str(dr[0]), ": ",dr[1],", ", dr[2])
             dataclean[str(dr[0])] = (dr[1],dr[2])
         return dataclean
+
+    def plot(fips, filename="generate",show=False,scale="log"): #scale = log, linear. include .png in filename
+        #todo: enter fips as list of sets of (fips, bool numCases, bool numDeaths) for printing comparison graphs
+        text = data.text_from_fips(fips)
+        if filename == "generate":
+            County, State = data.c_s_from_text(text)
+            filename = "plot-"+County+"-"+State+".png".replace(" ","_")
+        table = "ID"+str(fips)
+        connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass, data.db_name)
+        dates = db.query(connection,table,"date")
+        total_cases = db.query(connection,table,"total_cases")
+        total_deaths = db.query(connection,table,"total_deaths")
+
+        fig, ax = plt.subplots()
+        ax.plot(dates,total_cases,color='blue',label='Cases')
+        ax.plot(dates,total_deaths,color='red',label='Deaths')
+        plt.legend()
+        plt.xticks(rotation=25)
+        plt.yscale(scale)
+        ax.set(xlabel='Date Reported', ylabel='Num',title='COVID-19 Effect in {}'.format(text))
+        ax.grid()
+        fig.savefig(filename)
+        if show:
+            plt.show()
+        connection.close()
+        return True
 
 if __name__ == "__main__":
 
     db.log = False
+    while True:
+        userInput = input("[CMD] ")
+        if userInput == "graph":
+            location = input("[CMD] location: ")
+            fips = data.fips_from_text(location)
+            data.plot(fips,show=True,scale="log")
+        elif userInput == "get":
+            location = input("[CMD] location: ")
+            date = input("[CMD] date: ")
+            fips = data.fips_from_text(location)
+            print(fips)
+            #connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass, data.db_name)
 
+            print(db.print_all(db.query()))
+            data.get_county_data(fips,date,doprint=True)
+        elif userInput == "update":
+            data.update_all(log=True,highlight_errors=True)
     #data.init_db()
-    #data.update_all(log=True,end_on_data_skip=True,highlight_errors=True,update_state_in_county_update=True)
+    #data.update_all(log=True,highlight_errors=True)

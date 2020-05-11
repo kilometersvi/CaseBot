@@ -130,6 +130,8 @@ def get_all_received_dms():
 
 if __name__ == '__main__':
     userbase.create_usertables()
+    data.update_all(log=True,highlight_errors=True)
+
     reply_to_tweets()
     get_all_received_dms()
     send_dms()
