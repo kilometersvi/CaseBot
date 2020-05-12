@@ -7,8 +7,8 @@ FIPS codes (Federal Information Processing Standard) are used to ID different re
 ## Functional Requirements ##
 For the purposes of this bot, a database is required in order to perform the following functions:
 * Work with FIPS codes to store case/death info by sector, divided into the state, county, and city type. This is performed by creating a table for each relevant place, found by its associated code, which will store the total cases and total deaths in the area by date. Cases marked as 'Unknown County' are provided their own county FIPS code, 999.
+* Update COVID data from the New York Times github repo, with safety checks in case of network interruption. In order to prevent duplicate entries and excessive sql calls, the database will keep track of the last date it received case data for, effectively causing the db to only pull new case data. In case of network interrupts, the update will wait and try again.
 * Retrieve population data for each area from the 2015 US National Census, as well as percentage of each age group in a given population, to be used with calculating estimated true spread of the disease. In order to save storage space, census data is only pulled once a population has reached a threshold number of deaths, as true spread cannot be calculated in regions without enough data.
-* Update from the New York Times github repo, with safety checks in case of network interruption. In order to prevent duplicate entries and excessive sql calls, the database will keep track of the last date it received case data for, effectively causing the db to only pull new case data. In case of network interrupts, the update will wait and try again.
 * Store Subscriber data. As users are to be allowed to subscribe to the bot to get personalized updates on cases in their area, this data must be stored as well. 
 * Updatable and Reproducable. Database can initialize itself from a fresh SQL server.
 
