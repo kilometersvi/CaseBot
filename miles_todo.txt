@@ -1,5 +1,0 @@
-database:
-
-update plot() to handle multiple fips with params for which attributes to print
-
-stats:
