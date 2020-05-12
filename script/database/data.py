@@ -35,7 +35,7 @@ class data:
     #init functions
     def init_db():
         connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass)
-        db.run(connection, "CREATE DATABASE covidbot")
+        db.run(connection, "CREATE DATABASE IF NOT EXISTS covidbot")
         data.create_meta_tables(connection)
         connection.close()
 
@@ -127,6 +127,8 @@ class data:
 
     #update functions
     def update_all(retries=5,log=False,commit_every_insert=False,end_on_data_skip=False,highlight_errors=False,update_state_in_county_update=True,min_wait_time=20,min_deaths_to_county_pop_pull=50):
+        data.init_db()
+
         was_new_county_found = data.update_county_data(retries=retries,log=log,commit_every_insert=commit_every_insert,end_on_data_skip=end_on_data_skip,highlight_errors=highlight_errors,update_state=update_state_in_county_update,min_wait_time=min_wait_time,min_deaths_to_county_pop_pull=min_deaths_to_county_pop_pull)
 
         if was_new_county_found:
@@ -657,12 +659,12 @@ if __name__ == "__main__":
     while True:
         userInput = input("[CMD] ")
         if userInput == "graph":
-            location = input("[CMD] location: ")
+            location = input("[GRAPH] location: ")
             fips = data.fips_from_text(location)
             data.plot(fips,show=True,scale="log")
         elif userInput == "get":
-            location = input("[CMD] location: ")
-            date = input("[CMD] date: ")
+            location = input("[GET] location: ")
+            date = input("[GET] date: ")
             fips = data.fips_from_text(location)
             print(fips)
             #connection = db.create_connection(data.sql_addr, data.sql_user, data.sql_pass, data.db_name)
@@ -671,5 +673,9 @@ if __name__ == "__main__":
             data.get_county_data(fips,date,doprint=True)
         elif userInput == "update":
             data.update_all(log=True,highlight_errors=True)
+        elif userInput == "sql login":
+            newUserName = input("[SQL] username: ")
+            newPassword = input("[SQL] password: ")
+            print("SQL login set for session. ")
     #data.init_db()
     #data.update_all(log=True,highlight_errors=True)
