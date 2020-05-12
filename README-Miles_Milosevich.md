@@ -42,3 +42,6 @@ Want to test this database?
 4. Enter cmd 'sql login' to set sql login for session.
 5. Enter cmd 'update' to begin pulling data.
 6. Enter cmd 'graph' or 'get' at your leisure. When asking for location, provide FIPS code or "{County}, {State}". The word "County" within county is invalid. Case sensitive. When asking for date, enter as "YYYY-MM-DD".
+
+## To-Do ##
+* update plot() to handle multiple fips with params for which attributes to print for better comparisons between regions
