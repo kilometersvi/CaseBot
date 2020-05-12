@@ -43,6 +43,11 @@ Want to test this database?
 5. Enter cmd 'update' to begin pulling data.
 6. Enter cmd 'graph' or 'get' at your leisure. When asking for location, provide FIPS code or "{County}, {State}". The word "County" within county is invalid. Case sensitive. When asking for date, enter as "YYYY-MM-DD".
 
+## About This Data ##
+As this data is pulled from a third party source, this project has no guarantees to its validity. 
+NYT Collects this data from hospitals accross the nation, collected data by county, state, and place across all states and US territories.
+Worth noting, however, is that at an unspecified points in time, hospitals across the nation quietly switched from reporting confirmed cases/deaths to including probable cases/deaths within the same tally and no indestinguishing tags. As such, this dataset contains both confirmed and probable cases/deaths. [Read here for more](https://github.com/nytimes/covid-19-data/blob/master/PROBABLE-CASES-NOTE.md).
+
 ## To-Do ##
 * update plot() to handle multiple fips with params for which attributes to print for better comparisons between regions
 * better error handling for invalid FIPS/location input
