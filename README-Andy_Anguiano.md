@@ -3,9 +3,9 @@ Andy Anguiano
 # Twitter #
 
 ## Twitter Developer Application ##
-Created a twitter account: @CasesCovid
-Applied for a developer account
-Created an developer application
+* Created a twitter account: @CasesCovid
+* Applied for a developer account
+* Created an developer application
 
 ### Twitter Bot ###
 myBot.py: Driver of all aspects of the twitter bot
