@@ -45,3 +45,4 @@ Want to test this database?
 
 ## To-Do ##
 * update plot() to handle multiple fips with params for which attributes to print for better comparisons between regions
+* better error handling for invalid FIPS/location input
