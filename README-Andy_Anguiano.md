@@ -20,5 +20,5 @@ Python packages:
 * Install python tweepy package using pip3
 * Apply for a developer account
 * Once approved, create a developer application
-* Follow 'In order to run' in README-Miles_Milosevich.md, in order to access the coronavirus data
+* Follow instructions in README-Miles_Milosevich.md in order to access the coronavirus data
 * In myBot.py, replace consumer_key, consumer_secret, access_token, and access_token_secret with your developer application keys.
