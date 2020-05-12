@@ -36,7 +36,8 @@ APIs/Repositories:
 ## Create Your Own COVID-19 SQL Database ##
 Want to test this database? 
 1. Install MySQL Server on system. Skip if already installed. DB will create new database in server for you.
-2. Run script/database/data.py as main.
-3. Enter cmd 'sql login' to set sql login for session.
-4. Enter cmd 'update' to begin pulling data.
-5. Enter cmd 'graph' or 'get' at your leisure. When asking for location, provide FIPS code or "{County}, {State}". The word "County" within county is invalid. Case sensitive. When asking for date, enter as "YYYY-MM-DD".
+2. Install dependent python packages with pip3.
+3. Run script/database/data.py as main. Python version 3.7 required.
+4. Enter cmd 'sql login' to set sql login for session.
+5. Enter cmd 'update' to begin pulling data.
+6. Enter cmd 'graph' or 'get' at your leisure. When asking for location, provide FIPS code or "{County}, {State}". The word "County" within county is invalid. Case sensitive. When asking for date, enter as "YYYY-MM-DD".
