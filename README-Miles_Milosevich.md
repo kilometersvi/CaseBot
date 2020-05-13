@@ -32,7 +32,6 @@ Python packages:
 APIs/Repositories:
 * [New York Times COVID-19 Database](https://github.com/nytimes/covid-19-data)
 * US 2015 National Census Data
-* Lachtman et. al, Correcting under-reported COVID-19 casenumbers: estimating the true scale of the pandemic ([MedRx Paper](https://www.medrxiv.org/content/10.1101/2020.03.14.20036178v2.full.pdf#cite.liu2020reproductive), [Github](https://github.com/lachmann12/covid19/blob/master/script/prediction.py))
 
 ## Create Your Own COVID-19 SQL Database ##
 Want to test this database? 
@@ -48,6 +47,31 @@ As this data is pulled from a third party source, this project has no guarantees
 NYT Collects this data from hospitals accross the nation, collected data by county, state, and place across all states and US territories.
 Worth noting, however, is that at an unspecified points in time, hospitals across the nation quietly switched from reporting confirmed cases/deaths to including probable cases/deaths within the same tally and no indestinguishing tags. As such, this dataset contains both confirmed and probable cases/deaths. [Read here for more](https://github.com/nytimes/covid-19-data/blob/master/PROBABLE-CASES-NOTE.md).
 
+# Statistics #
+*Incomplete at time of writing.*
+
+## Functional Reqs ##
+Statistical tools that need to be used:
+* Estimate the number of true cases based on the death rate.
+
+## Implementation ##
+Lauchtman et. all's work would find a similar goal to ours, all that was left was to use our database with their calculations.
+
+## Dependencies ##
+Python packages:
+* matplotlib
+* numpy
+* pandas
+* sklearn
+* plotly
+* statistics
+* requests
+
+APIs/Repositories:
+* Lachtman et. al, Correcting under-reported COVID-19 casenumbers: estimating the true scale of the pandemic ([MedRx Paper](https://www.medrxiv.org/content/10.1101/2020.03.14.20036178v2.full.pdf#cite.liu2020reproductive), [Github](https://github.com/lachmann12/covid19/blob/master/script/prediction.py))
+
+
 ## To-Do ##
+* fix library errors with Lachtman dependencies
 * update plot() to handle multiple fips with params for which attributes to print for better comparisons between regions
 * better error handling for invalid FIPS/location input
