@@ -22,3 +22,4 @@ Python packages:
 * Once approved, create a developer application
 * Follow instructions in README-Miles_Milosevich.md in order to access the coronavirus data
 * In myBot.py, replace consumer_key, consumer_secret, access_token, and access_token_secret with your developer application keys.
+* Compile and run: python3 myBot.py
